@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\darkp\Documents\code\Styami\Blast Engine\build\CMakeFiles\d747491bb30d01c17e0cf0aef803fa71\update_mappings.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\glfw-3.4\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\glfw-3.4\src\mappings.h.in">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="C:\glfw-3.4\CMake\GenerateMappings.cmake" />
+    <None Include="C:\Users\darkp\Documents\code\Styami\Blast Engine\build\glfw3\src\CMakeFiles\update_mappings" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{6065B850-8A42-3AED-B678-59130E4762D8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{D4DF35FD-2D0F-3449-B4E9-64709AE8516A}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
