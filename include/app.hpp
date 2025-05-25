@@ -1,7 +1,7 @@
 #ifndef APP_HPP
 #define APP_HPP
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 #include "window.hpp"
 #include <vector>
 
@@ -19,7 +19,25 @@ class App
 		void cleanUp();
 		bool checkExtension();
 		bool checkValidationLayerSupport();
+		std::vector<const char*> getRequiredExtension();
+		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
+			VkDebugUtilsMessageTypeFlagsEXT messageType,
+			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+			void* pUserData
+		);
+		void setupDebugMessenger();
+		VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
+											const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+											const VkAllocationCallbacks* pAllocator,
+											VkDebugUtilsMessengerEXT* pDebugMessenger);
+		
+		void DestroyDebugUtilsMessengerEXT(VkInstance instance,
+											VkDebugUtilsMessengerEXT debugMessenger,
+											const VkAllocationCallbacks* pAllocator);
 
+		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+		VkDebugUtilsMessengerEXT debugMessenger;
 		Window renderer;
 		VkInstance instance;
 		
