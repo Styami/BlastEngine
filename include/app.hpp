@@ -13,6 +13,15 @@ class App
 
 
 	private:
+
+		struct QueueFamilyIndices {
+			std::optional<uint32_t> graphicsFamily;
+
+			bool is_complete() {
+				return graphicsFamily.has_value();
+			}
+		};
+
 		void initVulkan();
 		void createInstance();
 		void mainLoop();
@@ -37,9 +46,21 @@ class App
 											const VkAllocationCallbacks* pAllocator);
 
 		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+
+		void pickPhysicalDevice();
+
+		int ratePhysicalDevice(const VkPhysicalDevice& device);
+
+		QueueFamilyIndices findQueueFamilies(const VkPhysicalDevice& device);
+
+		void createLogicalDevice();
+
 		VkDebugUtilsMessengerEXT debugMessenger;
 		Window renderer;
+		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 		VkInstance instance;
+		VkDevice device;
+		VkQueue graphicsQueue;
 		
 		const std::vector<const char*> validationLayers = {
 			"VK_LAYER_KHRONOS_validation"

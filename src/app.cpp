@@ -3,6 +3,7 @@
 #include <print>
 #include <iostream>
 #include <algorithm>
+#include <map>
 
 
 App::App()
@@ -23,14 +24,14 @@ void App::createInstance() {
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo = &appInfo;
 
-	if (checkExtension() == false) throw std::runtime_error("All the required extension are not available");
+	if (checkExtension() == false) throw std::runtime_error("All the required extension are not available\n");
 	uint32_t extensionCount;
 	std::vector<const char*> extensions = getRequiredExtension();
 	createInfo.enabledExtensionCount = extensions.size();
 	createInfo.ppEnabledExtensionNames = extensions.data();
 
 	if (enableValidationLayers && !checkValidationLayerSupport()) {
-		throw std::runtime_error("validation layers requested, but not available!");
+		throw std::runtime_error("validation layers requested, but not available!\n");
 	}
 	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
 	if (enableValidationLayers) {
@@ -45,7 +46,7 @@ void App::createInstance() {
 	}
 
 	VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
-	if (result != VK_SUCCESS) throw std::runtime_error("failed to create instance");
+	if (result != VK_SUCCESS) throw std::runtime_error("failed to create instance\n");
 }
 
 bool App::checkValidationLayerSupport() {
@@ -149,10 +150,101 @@ bool App::checkExtension() {
 	return hasExtensions;
 }
 
+int App::ratePhysicalDevice(const VkPhysicalDevice& device) {
+	int score = 0;
+	VkPhysicalDeviceProperties deviceProperties;
+	VkPhysicalDeviceFeatures deviceFeatures;
+	vkGetPhysicalDeviceProperties(device, &deviceProperties);
+	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+	if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+		score += 1000;
+	if (!deviceFeatures.multiDrawIndirect)
+		return 0;
+	
+	score += deviceProperties.limits.maxImageDimension2D;
+	QueueFamilyIndices indices = findQueueFamilies(device);
+	if(!indices.graphicsFamily.has_value())
+		score -= 1000;
+	return score;
+}
+
+App::QueueFamilyIndices App::findQueueFamilies(const VkPhysicalDevice& device) {
+	QueueFamilyIndices indices;
+
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+	std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilyProperties.data());
+
+	int i = 0;
+	for(const VkQueueFamilyProperties& queueFamilyPropertie : queueFamilyProperties) {
+		if(queueFamilyPropertie.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			indices.graphicsFamily = i;
+		}
+		if(indices.is_complete())
+			break;
+		i++;
+	}
+	
+	return indices;
+}
+
+void App::pickPhysicalDevice() {
+	uint32_t physicalDeviceCount = 0;
+	vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
+
+	if(physicalDeviceCount == 0)
+		throw std::runtime_error("no physical device detected\n");
+	
+	std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
+	vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
+	std::multimap<int, VkPhysicalDevice> score_device;
+	for(const VkPhysicalDevice& device : physicalDevices) {
+		score_device.insert({ratePhysicalDevice(device), device});
+	}
+
+	auto suitableDevice = score_device.rbegin();
+
+	if(suitableDevice->first <= 0)
+		throw std::runtime_error("no suitable device detected\n");
+
+	physicalDevice = suitableDevice->second;
+}
+
+void App::createLogicalDevice() {
+	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+	VkDeviceQueueCreateInfo queueCreateInfo{};
+	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+	queueCreateInfo.queueCount = 1;
+	float queuePriority = 1;
+	queueCreateInfo.pQueuePriorities = &queuePriority;
+
+	VkPhysicalDeviceFeatures deviceFeatures{};
+	deviceFeatures.multiDrawIndirect = true;
+
+	VkDeviceCreateInfo deviceCreateInfo{};
+	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
+	deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
+	deviceCreateInfo.queueCreateInfoCount = 1;
+	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+
+	deviceCreateInfo.enabledExtensionCount = 0;
+
+	if(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device)) 
+		throw std::runtime_error("failed to create logical device.\n");
+
+	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+}
+
 void App::initVulkan() {
 	renderer.init("Blast Engine");
 	createInstance();
 	setupDebugMessenger();
+	pickPhysicalDevice();
 }
 
 
@@ -166,6 +258,7 @@ void App::cleanUp() {
 	}
 	
 	vkDestroyInstance(instance, nullptr);
+	vkDestroyDevice(device, nullptr);
 	renderer.clean();
 	std::println("clean");
 }
