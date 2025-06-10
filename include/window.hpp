@@ -1,5 +1,6 @@
 #ifndef WINDOW_HPP
 #define WINDOW_HPP
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <string>
 
@@ -18,6 +19,7 @@ class Window {
 		void clean();
 		const char** getExtensions(unsigned int& extensionCount);
 		void render();
+		void createSurface(const VkInstance& instance, VkSurfaceKHR* surface);
 	
 	private:
 		GLFWwindow* window;

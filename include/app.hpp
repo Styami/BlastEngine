@@ -16,9 +16,11 @@ class App
 
 		struct QueueFamilyIndices {
 			std::optional<uint32_t> graphicsFamily;
+			std::optional<uint32_t> presentFamily;
 
 			bool is_complete() {
-				return graphicsFamily.has_value();
+				return graphicsFamily.has_value() 
+						&& presentFamily.has_value();
 			}
 		};
 
@@ -55,13 +57,17 @@ class App
 
 		void createLogicalDevice();
 
+		void createSurface();
+
 		VkDebugUtilsMessengerEXT debugMessenger;
 		Window renderer;
 		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 		VkInstance instance;
+		VkSurfaceKHR surface;
 		VkDevice device;
 		VkQueue graphicsQueue;
-		
+		VkQueue presentQueue;
+
 		const std::vector<const char*> validationLayers = {
 			"VK_LAYER_KHRONOS_validation"
 		};

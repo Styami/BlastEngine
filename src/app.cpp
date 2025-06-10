@@ -4,6 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <map>
+#include <set>
 
 
 App::App()
@@ -182,6 +183,13 @@ App::QueueFamilyIndices App::findQueueFamilies(const VkPhysicalDevice& device) {
 		if(queueFamilyPropertie.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			indices.graphicsFamily = i;
 		}
+
+		VkBool32 surfaceIsSupported = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &surfaceIsSupported);
+		if(surfaceIsSupported) {
+			indices.presentFamily = i;
+		}
+
 		if(indices.is_complete())
 			break;
 		i++;
@@ -215,12 +223,18 @@ void App::pickPhysicalDevice() {
 void App::createLogicalDevice() {
 	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
-	VkDeviceQueueCreateInfo queueCreateInfo{};
-	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
-	queueCreateInfo.queueCount = 1;
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	std::set<uint32_t> uniqueQueueFamily = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 	float queuePriority = 1;
-	queueCreateInfo.pQueuePriorities = &queuePriority;
+
+	for(const uint32_t queue : uniqueQueueFamily) {
+		VkDeviceQueueCreateInfo queueCreateInfo{};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = queue;
+		queueCreateInfo.pQueuePriorities = &queuePriority;
+		queueCreateInfo.queueCount = 1;
+		queueCreateInfos.push_back(queueCreateInfo);
+	}
 
 	VkPhysicalDeviceFeatures deviceFeatures{};
 	deviceFeatures.multiDrawIndirect = true;
@@ -228,22 +242,28 @@ void App::createLogicalDevice() {
 	VkDeviceCreateInfo deviceCreateInfo{};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
-	deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
-	deviceCreateInfo.queueCreateInfoCount = 1;
+	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
+	deviceCreateInfo.queueCreateInfoCount = queueCreateInfos.size();
 	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
 
 	deviceCreateInfo.enabledExtensionCount = 0;
 
-	if(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device)) 
+	if(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS) 
 		throw std::runtime_error("failed to create logical device.\n");
 
 	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+}
+
+void App::createSurface() {
+	renderer.createSurface(instance, &surface);
 }
 
 void App::initVulkan() {
 	renderer.init("Blast Engine");
 	createInstance();
 	setupDebugMessenger();
+	createSurface();
 	pickPhysicalDevice();
 	createLogicalDevice();
 }
@@ -259,6 +279,7 @@ void App::cleanUp() {
 	}
 	
 	vkDestroyDevice(device, nullptr);
+	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
 	renderer.clean();
 	std::println("clean");

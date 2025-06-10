@@ -31,3 +31,8 @@ void Window::render() {
 
 	std::println("render");
 }
+
+void Window::createSurface(const VkInstance& instance, VkSurfaceKHR* surface) {
+	if(glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS)
+		throw std::runtime_error("failled to create window surface.\n");
+}
