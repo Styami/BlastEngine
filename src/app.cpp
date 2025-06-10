@@ -245,6 +245,7 @@ void App::initVulkan() {
 	createInstance();
 	setupDebugMessenger();
 	pickPhysicalDevice();
+	createLogicalDevice();
 }
 
 
@@ -257,8 +258,8 @@ void App::cleanUp() {
 		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 	}
 	
-	vkDestroyInstance(instance, nullptr);
 	vkDestroyDevice(device, nullptr);
+	vkDestroyInstance(instance, nullptr);
 	renderer.clean();
 	std::println("clean");
 }
