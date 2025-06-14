@@ -36,3 +36,7 @@ void Window::createSurface(const VkInstance& instance, VkSurfaceKHR* surface) {
 	if(glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS)
 		throw std::runtime_error("failled to create window surface.\n");
 }
+
+void Window::getFrameBuffer(int& width, int& height) {
+	glfwGetFramebufferSize(window, &width, &height);
+}

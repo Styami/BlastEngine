@@ -20,6 +20,7 @@ class Window {
 		const char** getExtensions(unsigned int& extensionCount);
 		void render();
 		void createSurface(const VkInstance& instance, VkSurfaceKHR* surface);
+		void getFrameBuffer(int& width, int &height);
 	
 	private:
 		GLFWwindow* window;
