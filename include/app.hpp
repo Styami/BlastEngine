@@ -84,6 +84,12 @@ class App
 		
 		void createImageViews();
 
+		std::vector<char> readFile(const std::string& fileName);
+		
+		VkShaderModule createShaderModule(const std::vector<char> binaryShader);
+
+		void createGraphicPipeline();
+
 		VkDebugUtilsMessengerEXT debugMessenger;
 		Window renderer;
 		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -97,6 +103,7 @@ class App
 		VkFormat swapChainFormat;
 		VkExtent2D swapChainExtent;
 		std::vector<VkImageView> swapChainImageViews;
+		VkPipelineLayout pipelineLayout;
 
 		const std::vector<const char*> validationLayers = {
 			"VK_LAYER_KHRONOS_validation"

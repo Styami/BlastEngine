@@ -2,10 +2,12 @@
 #include <stdexcept>
 #include <print>
 #include <iostream>
+#include <fstream>
+#include <format>
 #include <algorithm>
 #include <map>
 #include <set>
-
+#include <memory>
 
 
 App::App()
@@ -16,9 +18,9 @@ App::App()
 void App::createInstance() {
 	VkApplicationInfo appInfo{};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "Blast Engine";
+	appInfo.pApplicationName = "Blast";
 	appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
-	appInfo.pEngineName = "Blast";
+	appInfo.pEngineName = "Blast Engine";
 	appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 1);
 	appInfo.apiVersion = VK_API_VERSION_1_0;
 
@@ -175,26 +177,30 @@ bool App::checkDeviceExtension(const VkPhysicalDevice& device) {
 }
 
 VkSurfaceFormatKHR App::chooseSwapSurfaceFormats(const std::vector<VkSurfaceFormatKHR>& surfaceFormats) {
+	VkSurfaceFormatKHR retFormat = surfaceFormats[0];
 	std::for_each(surfaceFormats.begin(), surfaceFormats.end(),
-				[](const VkSurfaceFormatKHR& format) {
+				[&retFormat](const VkSurfaceFormatKHR& format) {
 					if(format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
 						&& format.format == VK_FORMAT_R8G8B8A8_SRGB) {
-							return format;
+							retFormat = format;
+							return;
 						}
 				}	
 	);
-	return surfaceFormats[0];
+	return retFormat;
 }
 
 VkPresentModeKHR App::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& presentModes) {
+	VkPresentModeKHR retMode = VK_PRESENT_MODE_FIFO_KHR;
 	std::for_each(presentModes.begin(), presentModes.end(),
-				[](const VkPresentModeKHR& mode) {
+				[&retMode](const VkPresentModeKHR& mode) {
 					if(mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-							return mode;
+							retMode = mode;
+							return;
 					}
 				}	
 	);
-	return VK_PRESENT_MODE_FIFO_KHR;
+	return retMode;
 }
 
 VkExtent2D App::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
@@ -437,8 +443,147 @@ void App::createImageViews() {
 	
 }
 
+std::vector<char> App::readFile(const std::string& fileName) {
+	std::fstream file(fileName, std::ios::ate | std::ios::binary);
+	if (file.is_open())
+	{
+		throw std::runtime_error(std::format("the file : \"%s\" does not exist!", fileName));
+	}
+	size_t size_file = (size_t)file.tellg();
+	std::vector<char>buffer(size_file);
+
+	file.seekg(0);
+	file.read(buffer.data(), size_file);
+	file.close();
+
+	return buffer;
+}
+
+VkShaderModule App::createShaderModule(const std::vector<char> binaryShader) {
+	VkShaderModuleCreateInfo createInfo{};
+	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	createInfo.codeSize = binaryShader.size();
+	createInfo.pCode = reinterpret_cast<const uint32_t*>(binaryShader.data());
+
+	VkShaderModule shaderModule;
+	if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create shader module!");
+	}
+
+	return shaderModule;
+}
+
+void App::createGraphicPipeline() {
+	std::vector<char> shaderVert = readFile("firstShaderVert.spv");
+	std::vector<char> shaderFrag = readFile("firstShaderFrag.spv");
+
+	VkShaderModule shaderVertModule = createShaderModule(shaderVert);
+	VkShaderModule shaderFragModule = createShaderModule(shaderFrag);
+
+	VkPipelineShaderStageCreateInfo shaderVertCreateInfo{};
+	shaderVertCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shaderVertCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	shaderVertCreateInfo.module = shaderVertModule;
+	shaderVertCreateInfo.pName = "vertexMain";
+
+	VkPipelineShaderStageCreateInfo shaderFragCreateInfo{};
+	shaderFragCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shaderFragCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	shaderFragCreateInfo.module = shaderFragModule;
+	shaderFragCreateInfo.pName = "FragmentMain";
+
+	VkPipelineShaderStageCreateInfo shaderStages[] = {shaderVertCreateInfo, shaderFragCreateInfo};
+
+	
+	VkPipelineVertexInputStateCreateInfo vertexInputInfos {};
+	vertexInputInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfos.vertexAttributeDescriptionCount = 0;
+	vertexInputInfos.pVertexAttributeDescriptions = nullptr;
+	vertexInputInfos.vertexBindingDescriptionCount = 0;
+	vertexInputInfos.pVertexBindingDescriptions = nullptr;
+	
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+	
+	std::vector<VkDynamicState> dynamicStates = {
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR
+	};
+	
+	VkPipelineDynamicStateCreateInfo dynamicStateInfos {};
+	dynamicStateInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicStateInfos.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+	dynamicStateInfos.pDynamicStates = dynamicStates.data();
+	
+	VkPipelineViewportStateCreateInfo viewportStateInfos {};
+	viewportStateInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportStateInfos.scissorCount = 1;
+	viewportStateInfos.viewportCount = 1;
+
+	VkPipelineRasterizationStateCreateInfo rasterizationStateInfos {};
+	rasterizationStateInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizationStateInfos.depthClampEnable = VK_FALSE;
+	rasterizationStateInfos.rasterizerDiscardEnable = VK_FALSE;
+	rasterizationStateInfos.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizationStateInfos.lineWidth = 1;
+	
+	rasterizationStateInfos.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizationStateInfos.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	
+	rasterizationStateInfos.depthBiasEnable = VK_FALSE;
+	rasterizationStateInfos.depthBiasConstantFactor = 0;
+	rasterizationStateInfos.depthBiasClamp = 0;
+	rasterizationStateInfos.depthBiasSlopeFactor = 0;
+
+	VkPipelineMultisampleStateCreateInfo multisampling{};
+	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling.sampleShadingEnable = VK_FALSE;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling.minSampleShading = 1.0f;
+	multisampling.pSampleMask = nullptr;
+	multisampling.alphaToCoverageEnable = VK_FALSE;
+	multisampling.alphaToOneEnable = VK_FALSE;
+
+	VkPipelineColorBlendAttachmentState colorBlendAttachmentState {};
+	colorBlendAttachmentState.colorWriteMask = 
+		VK_COLOR_COMPONENT_R_BIT
+		| VK_COLOR_COMPONENT_G_BIT
+		| VK_COLOR_COMPONENT_B_BIT
+		| VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachmentState.blendEnable = VK_TRUE;
+	colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	VkPipelineColorBlendStateCreateInfo blendStateCreateInfo {};
+	blendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	blendStateCreateInfo.logicOpEnable = VK_FALSE;
+	blendStateCreateInfo.logicOp = VK_LOGIC_OP_COPY;
+	blendStateCreateInfo.pAttachments = &colorBlendAttachmentState;
+	blendStateCreateInfo.attachmentCount = 1;
+	blendStateCreateInfo.blendConstants[0] = 0;
+	blendStateCreateInfo.blendConstants[1] = 0;
+	blendStateCreateInfo.blendConstants[2] = 0;
+	blendStateCreateInfo.blendConstants[3] = 0;
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo {};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 0;
+	pipelineLayoutInfo.pSetLayouts = nullptr;
+	pipelineLayoutInfo.pushConstantRangeCount = 0;
+	pipelineLayoutInfo.pPushConstantRanges = nullptr;
+	if(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("Failled to create pipeline layout!");
+	}
+}
+
 void App::initVulkan() {
-	renderer.init("Blast Engine");
+	renderer.init("Blast");
 	createInstance();
 	setupDebugMessenger();
 	createSurface();
@@ -446,6 +591,7 @@ void App::initVulkan() {
 	createLogicalDevice();
 	createSwapChain();
 	createImageViews();
+	createGraphicPipeline();
 }
 
 
@@ -462,7 +608,8 @@ void App::cleanUp() {
 
 	for(VkImageView& imageView : swapChainImageViews) 
 		vkDestroyImageView(device, imageView, nullptr);
-	
+		
+	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
