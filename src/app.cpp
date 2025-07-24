@@ -18,7 +18,7 @@ App::App()
 void App::createInstance() {
 	VkApplicationInfo appInfo{};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "Blast";
+	appInfo.pApplicationName = "Blast Engine";
 	appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
 	appInfo.pEngineName = "Blast Engine";
 	appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 1);
@@ -405,7 +405,7 @@ void App::createSwapChain() {
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
 	if(vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
-		throw std::runtime_error("Failled to create swap chain!");
+		throw std::runtime_error("failed to create swap chain!");
 	
 	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
 	swapChainImages.resize(imageCount);
@@ -443,11 +443,14 @@ void App::createImageViews() {
 	
 }
 
-std::vector<char> App::readFile(const std::string& fileName) {
-	std::fstream file(fileName, std::ios::ate | std::ios::binary);
-	if (file.is_open())
+std::vector<char> App::readFile(const std::filesystem::path& fileName) {
+	if (!std::filesystem::exists(fileName)) {
+		throw (std::format("File : \"{}\" does not exist!", fileName.string()));
+	}
+	std::ifstream file(fileName, std::ios::ate | std::ios::binary);
+	if (!file.is_open())
 	{
-		throw std::runtime_error(std::format("the file : \"%s\" does not exist!", fileName));
+		throw (std::format("File : \"{}\" could not have been open!", fileName.string()));
 	}
 	size_t size_file = (size_t)file.tellg();
 	std::vector<char>buffer(size_file);
@@ -474,8 +477,8 @@ VkShaderModule App::createShaderModule(const std::vector<char> binaryShader) {
 }
 
 void App::createGraphicPipeline() {
-	std::vector<char> shaderVert = readFile("firstShaderVert.spv");
-	std::vector<char> shaderFrag = readFile("firstShaderFrag.spv");
+	std::vector<char> shaderVert = readFile("shaders/firstShaderVert.spv");
+	std::vector<char> shaderFrag = readFile("shaders/firstShaderFrag.spv");
 
 	VkShaderModule shaderVertModule = createShaderModule(shaderVert);
 	VkShaderModule shaderFragModule = createShaderModule(shaderFrag);
@@ -484,13 +487,13 @@ void App::createGraphicPipeline() {
 	shaderVertCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderVertCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
 	shaderVertCreateInfo.module = shaderVertModule;
-	shaderVertCreateInfo.pName = "vertexMain";
+	shaderVertCreateInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo shaderFragCreateInfo{};
 	shaderFragCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderFragCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 	shaderFragCreateInfo.module = shaderFragModule;
-	shaderFragCreateInfo.pName = "FragmentMain";
+	shaderFragCreateInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = {shaderVertCreateInfo, shaderFragCreateInfo};
 
@@ -578,12 +581,77 @@ void App::createGraphicPipeline() {
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 	if(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
-		throw std::runtime_error("Failled to create pipeline layout!");
+		throw std::runtime_error("failed to create pipeline layout!");
 	}
+
+	VkGraphicsPipelineCreateInfo graphicPipelineInfo{};
+	graphicPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	graphicPipelineInfo.stageCount = 2;
+	graphicPipelineInfo.pStages = shaderStages;
+
+	graphicPipelineInfo.pVertexInputState = &vertexInputInfos;
+	graphicPipelineInfo.pInputAssemblyState = &inputAssembly;
+	graphicPipelineInfo.pViewportState = &viewportStateInfos;
+	graphicPipelineInfo.pRasterizationState = &rasterizationStateInfos;
+	graphicPipelineInfo.pMultisampleState = & multisampling;
+	graphicPipelineInfo.pDepthStencilState = nullptr;
+	graphicPipelineInfo.pColorBlendState = &blendStateCreateInfo;
+	graphicPipelineInfo.pDynamicState = &dynamicStateInfos;
+
+	graphicPipelineInfo.layout = pipelineLayout;
+
+	graphicPipelineInfo.renderPass = renderPass;
+	graphicPipelineInfo.subpass = 0;
+
+	graphicPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+	graphicPipelineInfo.basePipelineIndex = -1;
+
+	if(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicPipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create graphics pipeline!!");
+	}
+
+	vkDestroyShaderModule(device, shaderVertModule, nullptr);
+    vkDestroyShaderModule(device, shaderFragModule, nullptr);
+}
+
+void App::createRenderPass() {
+	VkAttachmentDescription colorAttchement {};
+	colorAttchement.format = swapChainFormat;
+	colorAttchement.samples = VK_SAMPLE_COUNT_1_BIT;
+
+	colorAttchement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttchement.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+	colorAttchement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttchement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+	colorAttchement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttchement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	VkAttachmentReference attachmentRef {};
+	attachmentRef.attachment = 0;
+	attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpassDesc {};
+	subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpassDesc.colorAttachmentCount = 1;
+	subpassDesc.pColorAttachments = &attachmentRef;
+
+	VkRenderPassCreateInfo renderPassInfo {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassInfo.attachmentCount = 1;
+	renderPassInfo.pAttachments = &colorAttchement;
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpassDesc;
+
+	if(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create render pass!!!");
+	}
+
 }
 
 void App::initVulkan() {
-	renderer.init("Blast");
+	renderer.init("Blast Engine");
 	createInstance();
 	setupDebugMessenger();
 	createSurface();
@@ -591,6 +659,7 @@ void App::initVulkan() {
 	createLogicalDevice();
 	createSwapChain();
 	createImageViews();
+	createRenderPass();
 	createGraphicPipeline();
 }
 
@@ -608,8 +677,10 @@ void App::cleanUp() {
 
 	for(VkImageView& imageView : swapChainImageViews) 
 		vkDestroyImageView(device, imageView, nullptr);
-		
+
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+	vkDestroyRenderPass(device, renderPass, nullptr);
+	vkDestroyPipeline(device, graphicsPipeline, nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
@@ -625,6 +696,8 @@ void App::run() {
 	catch (const std::exception& e)
 	{
 		std::cout << e.what() << std::endl;
+		cleanUp();
+		return;
 	}
 	mainLoop();
 	cleanUp();

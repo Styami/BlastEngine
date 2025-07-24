@@ -2,6 +2,7 @@
 #define APP_HPP
 
 #include <vulkan/vulkan.hpp>
+#include <filesystem>
 #include "window.hpp"
 #include <vector>
 
@@ -84,11 +85,13 @@ class App
 		
 		void createImageViews();
 
-		std::vector<char> readFile(const std::string& fileName);
+		std::vector<char> readFile(const std::filesystem::path& fileName);
 		
 		VkShaderModule createShaderModule(const std::vector<char> binaryShader);
 
 		void createGraphicPipeline();
+
+		void createRenderPass();
 
 		VkDebugUtilsMessengerEXT debugMessenger;
 		Window renderer;
@@ -103,7 +106,9 @@ class App
 		VkFormat swapChainFormat;
 		VkExtent2D swapChainExtent;
 		std::vector<VkImageView> swapChainImageViews;
+		VkRenderPass renderPass;
 		VkPipelineLayout pipelineLayout;
+		VkPipeline graphicsPipeline;
 
 		const std::vector<const char*> validationLayers = {
 			"VK_LAYER_KHRONOS_validation"
