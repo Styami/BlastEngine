@@ -27,22 +27,36 @@ target_link_libraries(BlastEngine PRIVATE
 #based on this CMAKE video https://www.youtube.com/watch?v=ZuHK_5cJ6B8&t=217s
 
 find_program(SLANG_COMPILATOR slangc)
+find_package(Vulkan COMPONENTS glslc)
+find_program(GLSL_COMPILATOR glslc)
 
 file(GLOB_RECURSE SLANG_SOURCE_FILES
   "${PROJECT_SOURCE_DIR}/shaders/*.slang"
 )
  
 foreach(SLANG ${SLANG_SOURCE_FILES})
-  get_filename_component(FILE_NAME ${SLANG} NAME_WLE)
-  set(BINARY_FILE "${PROJECT_SOURCE_DIR}/shaders/${FILE_NAME}")
-  if((${FILE_NAME} MATCHES Vert$) OR (${FILE_NAME} MATCHES Frag$))
-	  	set(BINARY_FILE "${BINARY_FILE}.spv")
+	get_filename_component(FILE_NAME ${SLANG} NAME_WLE)
+	set(SHADER_PATH "${PROJECT_SOURCE_DIR}/shaders/${FILE_NAME}")
+	if(${FILE_NAME} MATCHES Vert$)
+	  	set(GLSL_FILE "${SHADER_PATH}.vert")
+	  	set(BINARY_FILE "${SHADER_PATH}.spv")
 		add_custom_command(
-  			OUTPUT ${BINARY_FILE}
-			COMMAND ${SLANG_COMPILATOR} -target spirv ${SLANG} -o ${BINARY_FILE}
+  			OUTPUT ${GLSL_FILE} ${BINARY_FILE}  
+			COMMAND ${SLANG_COMPILATOR} -target glsl -profile glsl_450 -entry vertexMain ${SLANG} -o ${GLSL_FILE}
+			COMMAND ${GLSL_COMPILATOR} ${GLSL_FILE} -o ${BINARY_FILE}
 			DEPENDS ${SLANG})
+  		list(APPEND BINARY_FILES ${GLSL_FILE})
+	elseif(${FILE_NAME} MATCHES Frag$)
+	  	set(GLSL_FILE "${SHADER_PATH}.frag")
+	  	set(BINARY_FILE "${SHADER_PATH}.spv")
+		add_custom_command(
+			OUTPUT ${GLSL_FILE} ${BINARY_FILE}
+			COMMAND ${SLANG_COMPILATOR} -target glsl -profile glsl_450 -entry fragmentMain ${SLANG} -o ${GLSL_FILE}
+			COMMAND ${GLSL_COMPILATOR} ${GLSL_FILE} -o ${BINARY_FILE}
+			DEPENDS ${SLANG})
+  		list(APPEND BINARY_FILES ${GLSL_FILE})
 	else()
-		set(BINARY_FILE "${BINARY_FILE}.slang-module")
+		set(BINARY_FILE "${SHADER_PATH}.slang-module")
 		add_custom_command(
 			OUTPUT ${BINARY_FILE}
 			COMMAND ${SLANG_COMPILATOR} ${SLANG} -o ${BINARY_FILE}

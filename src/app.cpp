@@ -82,6 +82,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL App::debugCallback(
 
     return VK_FALSE;
 }
+
 void App::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
 	createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 	createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
@@ -93,6 +94,7 @@ void App::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& c
 	createInfo.pfnUserCallback = debugCallback;
 	createInfo.pUserData = nullptr;
 }
+
 void App::setupDebugMessenger() {
 	VkDebugUtilsMessengerCreateInfoEXT createInfo{};
 	populateDebugMessengerCreateInfo(createInfo);
@@ -316,7 +318,7 @@ App::SwapChainSupportDetails App::querySwapChainSupport(const VkPhysicalDevice& 
 	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModesCount, nullptr);
 	if (presentModesCount != 0)
 	{
-		details.formats.resize(presentModesCount);
+		details.presentModes.resize(presentModesCount);
 		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModesCount, details.presentModes.data());
 	}
 	
@@ -362,6 +364,7 @@ void App::createLogicalDevice() {
 void App::createSurface() {
 	renderer.createSurface(instance, &surface);
 }
+
 void App::createSwapChain() {
 	SwapChainSupportDetails details = querySwapChainSupport(physicalDevice);
 
