@@ -27,7 +27,6 @@ target_link_libraries(BlastEngine PRIVATE
 #based on this CMAKE video https://www.youtube.com/watch?v=ZuHK_5cJ6B8&t=217s
 
 find_program(SLANG_COMPILATOR slangc)
-find_package(Vulkan COMPONENTS glslc)
 find_program(GLSL_COMPILATOR glslc)
 
 file(GLOB_RECURSE SLANG_SOURCE_FILES
@@ -41,7 +40,7 @@ foreach(SLANG ${SLANG_SOURCE_FILES})
 	  	set(GLSL_FILE "${SHADER_PATH}.vert")
 	  	set(BINARY_FILE "${SHADER_PATH}.spv")
 		add_custom_command(
-  			OUTPUT ${GLSL_FILE} ${BINARY_FILE}  
+  		OUTPUT ${GLSL_FILE} ${BINARY_FILE}  
 			COMMAND ${SLANG_COMPILATOR} -target glsl -profile glsl_450 -entry vertexMain ${SLANG} -o ${GLSL_FILE}
 			COMMAND ${GLSL_COMPILATOR} ${GLSL_FILE} -o ${BINARY_FILE}
 			DEPENDS ${SLANG})
@@ -65,7 +64,7 @@ foreach(SLANG ${SLANG_SOURCE_FILES})
   
   list(APPEND BINARY_FILES ${BINARY_FILE})
 endforeach(SLANG)
- 
+
 add_custom_target(
     Shaders
     DEPENDS ${BINARY_FILES}
