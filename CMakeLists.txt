@@ -41,8 +41,8 @@ foreach(SLANG ${SLANG_SOURCE_FILES})
 	  	set(BINARY_FILE "${SHADER_PATH}.spv")
 		add_custom_command(
   		OUTPUT ${GLSL_FILE} ${BINARY_FILE}  
-			COMMAND ${SLANG_COMPILATOR} -target glsl -profile glsl_450 -entry vertexMain ${SLANG} -o "${GLSL_FILE}"
-			COMMAND ${GLSL_COMPILATOR} "${GLSL_FILE}" -o ${BINARY_FILE}
+			COMMAND ${SLANG_COMPILATOR} -target glsl -profile glsl_450 -entry vertexMain ${SLANG} -o ${GLSL_FILE}
+			COMMAND ${GLSL_COMPILATOR} ${GLSL_FILE} -o ${BINARY_FILE}
 			DEPENDS ${SLANG})
   		list(APPEND BINARY_FILES ${GLSL_FILE})
 	elseif(${FILE_NAME} MATCHES Frag$)
