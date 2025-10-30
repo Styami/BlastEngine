@@ -37,19 +37,28 @@ class App
 		};
 		
 		void initVulkan();
+
 		void createInstance();
+
 		void mainLoop();
+
 		void cleanUp();
+
 		bool checkExtension();
+
 		bool checkValidationLayerSupport();
+
 		std::vector<const char*> getRequiredExtension();
+
 		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
 			VkDebugUtilsMessageTypeFlagsEXT messageType,
 			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 			void* pUserData
 		);
+
 		void setupDebugMessenger();
+
 		VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
 											const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
 											const VkAllocationCallbacks* pAllocator,
@@ -93,6 +102,14 @@ class App
 
 		void createRenderPass();
 
+		void createFrameBuffers();
+
+		void createCommandPool();
+
+		void createCommandBuffer();
+
+		void recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex);
+
 		VkDebugUtilsMessengerEXT debugMessenger;
 		Window renderer;
 		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -109,6 +126,9 @@ class App
 		VkRenderPass renderPass;
 		VkPipelineLayout pipelineLayout;
 		VkPipeline graphicsPipeline;
+		std::vector<VkFramebuffer> swapChainFrameBuffers;
+		VkCommandPool commandPool;
+		VkCommandBuffer commandBuffer;
 
 		const std::vector<const char*> validationLayers = {
 			"VK_LAYER_KHRONOS_validation"

@@ -386,7 +386,7 @@ void App::createSwapChain() {
 	createInfo.imageColorSpace = format.colorSpace;
 	createInfo.imageArrayLayers = 1;
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	
+
 	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 	std::array<uint32_t, 2> queueFamilyIndices = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 	if (indices.graphicsFamily != indices.presentFamily) {
@@ -653,6 +653,105 @@ void App::createRenderPass() {
 
 }
 
+
+void App::createFrameBuffers() {
+	swapChainFrameBuffers.resize(swapChainImageViews.size());
+
+	for(size_t i = 0; i < swapChainImageViews.size(); i++) {
+		VkImageView attachements[] = {
+			swapChainImageViews[i]
+		};
+		
+		VkFramebufferCreateInfo framebufferCreateInfo{};
+		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.renderPass = renderPass;
+		framebufferCreateInfo.attachmentCount = 1;
+		framebufferCreateInfo.pAttachments = attachements;
+		framebufferCreateInfo.height = swapChainExtent.height;
+		framebufferCreateInfo.width = swapChainExtent.width;
+		framebufferCreateInfo.layers = 1;
+
+		if(vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &swapChainFrameBuffers[i])
+			!= VK_SUCCESS
+		) {
+			throw std::runtime_error("Failed to create framebuffer");
+		}
+	}
+
+}
+
+void App::createCommandPool() {
+	QueueFamilyIndices QueueFamilyIndices = findQueueFamilies(physicalDevice);
+
+	VkCommandPoolCreateInfo commandPoolCreateInfo{};
+	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	commandPoolCreateInfo.queueFamilyIndex = QueueFamilyIndices.graphicsFamily.value();
+
+	if(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool) != VK_SUCCESS)
+		throw std::exception("Failed to create command pool!");
+}
+
+void App::createCommandBuffer() {
+	VkCommandBufferAllocateInfo allocateInfo{};
+	allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocateInfo.commandPool = commandPool;
+	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocateInfo.commandBufferCount = 1;
+
+	if(vkAllocateCommandBuffers(device, &allocateInfo, &commandBuffer) != VK_SUCCESS) {
+		throw std::exception("failed to allocate command buffers!");
+	}
+	
+}
+
+void App::recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex) {
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	beginInfo.flags = 0; // optional
+	beginInfo.pInheritanceInfo = nullptr; // optional
+
+	if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+		throw std::exception("Failed to begin the record of command buffer!");
+	}
+
+	VkRenderPassBeginInfo renderPassInfo{};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = renderPass;
+	renderPassInfo.framebuffer = swapChainFrameBuffers[imageIndex];
+	renderPassInfo.renderArea.offset = {0, 0};
+	renderPassInfo.renderArea.extent = swapChainExtent;
+	
+	VkClearValue clearColor = {{{0.1, 0.1, 0.1, 1.0}}};
+	renderPassInfo.clearValueCount = 1;
+	renderPassInfo.pClearValues = &clearColor;
+
+	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+	VkViewport viewport{};
+	viewport.x = 0;
+	viewport.y = 0;
+	viewport.height = swapChainExtent.height;
+	viewport.width = swapChainExtent.width;
+	viewport.minDepth = 0;
+	viewport.maxDepth = 1;
+	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+	VkRect2D scissor{};
+	scissor.offset = {0, 0};
+	scissor.extent = swapChainExtent;
+	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+	vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+	vkCmdEndRenderPass(commandBuffer);
+
+	if(vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+		throw std::exception("Failed to end command buffer.");
+	}
+}
+
 void App::initVulkan() {
 	renderer.init("Blast Engine");
 	createInstance();
@@ -664,6 +763,8 @@ void App::initVulkan() {
 	createImageViews();
 	createRenderPass();
 	createGraphicPipeline();
+	createFrameBuffers();
+	createCommandPool();
 }
 
 
@@ -678,12 +779,16 @@ void App::cleanUp() {
 	
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
 
+	for (VkFramebuffer framebuffer : swapChainFrameBuffers) {
+		vkDestroyFramebuffer(device, framebuffer, nullptr);
+	}
 	for(VkImageView& imageView : swapChainImageViews) 
 		vkDestroyImageView(device, imageView, nullptr);
 
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 	vkDestroyRenderPass(device, renderPass, nullptr);
 	vkDestroyPipeline(device, graphicsPipeline, nullptr);
+	vkDestroyCommandPool(device, commandPool, nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
