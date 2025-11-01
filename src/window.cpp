@@ -17,10 +17,9 @@ const char** Window::getExtensions(unsigned int& extensionCount) {
 	return glfwGetRequiredInstanceExtensions(&extensionCount);
 }
 
-void Window::loop() {
-	while (!glfwWindowShouldClose(window)) {
-		glfwPollEvents();
-	}
+int Window::loop() {
+	glfwPollEvents();
+	return glfwWindowShouldClose(window);
 }
 
 void Window::clean() {

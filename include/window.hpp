@@ -15,7 +15,7 @@ class Window {
 	public:
 		Window();
 		void init(const std::string& title);
-		void loop();
+		int loop();
 		void clean();
 		const char** getExtensions(unsigned int& extensionCount);
 		void render();

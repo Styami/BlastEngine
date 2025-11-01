@@ -108,7 +108,11 @@ class App
 
 		void createCommandBuffer();
 
-		void recordCommandBuffer(VkCommandBuffer& commandBuffer, uint32_t imageIndex);
+		void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
+		void createSyncObject();
+
+		void drawFrame();
 
 		VkDebugUtilsMessengerEXT debugMessenger;
 		Window renderer;
@@ -129,6 +133,10 @@ class App
 		std::vector<VkFramebuffer> swapChainFrameBuffers;
 		VkCommandPool commandPool;
 		VkCommandBuffer commandBuffer;
+		VkSemaphore imageAvailableSemaphore;
+		VkSemaphore renderFinishedSemaphore;
+		VkFence inFlightFence;
+		bool appRunning = true;
 
 		const std::vector<const char*> validationLayers = {
 			"VK_LAYER_KHRONOS_validation"
