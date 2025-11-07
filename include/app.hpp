@@ -6,6 +6,7 @@
 #include "window.hpp"
 #include <vector>
 
+const int MAX_FRAME_IN_FLIGHT = 2;
 class App
 {
 	public:
@@ -106,11 +107,11 @@ class App
 
 		void createCommandPool();
 
-		void createCommandBuffer();
+		void createCommandBuffers();
 
 		void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
-		void createSyncObject();
+		void createSyncObjects();
 
 		void drawFrame();
 
@@ -132,12 +133,14 @@ class App
 		VkPipeline graphicsPipeline;
 		std::vector<VkFramebuffer> swapChainFrameBuffers;
 		VkCommandPool commandPool;
-		VkCommandBuffer commandBuffer;
-		VkSemaphore imageAvailableSemaphore;
-		VkSemaphore renderFinishedSemaphore;
-		VkFence inFlightFence;
-		bool appRunning = true;
+		std::array<VkCommandBuffer, MAX_FRAME_IN_FLIGHT> commandBuffers;
+		std::array<VkSemaphore, MAX_FRAME_IN_FLIGHT> imageAvailableSemaphores;
+		std::array<VkSemaphore, MAX_FRAME_IN_FLIGHT> renderFinishedSemaphores;
+		std::array<VkFence, MAX_FRAME_IN_FLIGHT> inFlightFences;
 
+		bool appRunning = true;
+		uint32_t currentFrame = 0;
+		
 		const std::vector<const char*> validationLayers = {
 			"VK_LAYER_KHRONOS_validation"
 		};
