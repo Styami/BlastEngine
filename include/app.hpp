@@ -93,6 +93,10 @@ class App
 		
 		void createSwapChain();
 		
+		void recreateSwapChain();
+
+		void cleanUpSwapChain();
+		
 		void createImageViews();
 
 		std::vector<char> readFile(const std::filesystem::path& fileName);

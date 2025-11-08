@@ -15,15 +15,20 @@ class Window {
 	public:
 		Window();
 		void init(const std::string& title);
-		int loop();
+		const int loop();
 		void clean();
 		const char** getExtensions(unsigned int& extensionCount);
 		void render();
 		void createSurface(const VkInstance& instance, VkSurfaceKHR* surface);
-		void getFrameBuffer(int& width, int &height);
-	
-	private:
+		void getFrameBufferSize(int& width, int &height);
+		static void frameBufferResizeCallback(GLFWwindow* window, int width, int height);
+		const bool hasFrameBufferResized() const;
+		void resetFrameBufferResized();
+		void waitEvents();
+		
+		private:
 		GLFWwindow* window;
+		bool framebufferResized;
 };
 
 #endif

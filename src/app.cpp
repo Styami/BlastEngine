@@ -210,7 +210,7 @@ VkExtent2D App::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
         return capabilities.currentExtent;
     } else {
         int width, height;
-        renderer.getFrameBuffer(width, height);
+        renderer.getFrameBufferSize(width, height);
 
         VkExtent2D actualExtent = {
             static_cast<uint32_t>(width),
@@ -406,7 +406,6 @@ void App::createSwapChain() {
 	createInfo.clipped = VK_TRUE;
 
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
-
 	if(vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
 		throw std::runtime_error("failed to create swap chain!");
 	
@@ -415,6 +414,23 @@ void App::createSwapChain() {
 	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
 	swapChainFormat = createInfo.imageFormat;
 	swapChainExtent = createInfo.imageExtent;
+}
+
+void App::recreateSwapChain() {
+	vkDeviceWaitIdle(device);
+
+	cleanUpSwapChain();
+	int width, height = 0;
+	renderer.getFrameBufferSize(width, height);
+	while (width == 0 || height == 0)
+	{
+		renderer.waitEvents();
+		renderer.getFrameBufferSize(width, height);
+	}
+	
+	createSwapChain();
+	createImageViews();
+	createFrameBuffers();
 }
 
 void App::createImageViews() {
@@ -784,10 +800,21 @@ void App::createSyncObjects() {
 void App::drawFrame() {
 	// Setup fence
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-	vkResetFences(device, 1, &inFlightFences[currentFrame]);
-	// Wait image of swapchain
+	
+	// get image of swapchain and check if the swap chain is still OK
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		recreateSwapChain();
+		return;
+	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+	{
+		throw std::runtime_error("Failed to acquire image of the swapchain.");
+	}
+	vkResetFences(device, 1, &inFlightFences[currentFrame]);
+	
+	
 	// Setup record of command buffer
 	vkResetCommandBuffer(commandBuffers[currentFrame], 0);
 	recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
@@ -819,7 +846,17 @@ void App::drawFrame() {
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = nullptr; // Optional
 	
-	vkQueuePresentKHR(presentQueue, &presentInfo);
+	result = vkQueuePresentKHR(presentQueue, &presentInfo);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || renderer.hasFrameBufferResized())
+	{
+		recreateSwapChain();
+		renderer.resetFrameBufferResized();
+	} else if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to present image.");
+	}
+	
+	
 	currentFrame = (currentFrame + 1) % MAX_FRAME_IN_FLIGHT;
 }
 
@@ -849,19 +886,22 @@ void App::mainLoop() {
 	vkDeviceWaitIdle(device);
 }
 
-void App::cleanUp() {
-	if (enableValidationLayers) {
-		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-	}
+void App::cleanUpSwapChain() {
 	
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
-
 	for (VkFramebuffer framebuffer : swapChainFrameBuffers) {
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
 	}
 	for(VkImageView& imageView : swapChainImageViews) {
 		vkDestroyImageView(device, imageView, nullptr);
 	}
+}
+
+void App::cleanUp() {
+	if (enableValidationLayers) {
+		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+	}
+	cleanUpSwapChain();
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 	vkDestroyRenderPass(device, renderPass, nullptr);
 	vkDestroyPipeline(device, graphicsPipeline, nullptr);
