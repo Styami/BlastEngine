@@ -16,11 +16,13 @@ find_package(Vulkan REQUIRED)
 add_executable(BlastEngine)
 add_subdirectory(include)
 add_subdirectory(src)
+add_subdirectory(ext/vk-bootstrap)
 
 target_include_directories(BlastEngine PRIVATE include)
 target_link_libraries(BlastEngine PRIVATE 
 	glfw
 	Vulkan::Vulkan
+	vk-bootstrap::vk-bootstrap
 )
 
 ### SHADER PART ###
