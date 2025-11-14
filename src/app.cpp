@@ -22,7 +22,7 @@ void App::createInstance() {
 	instanceBuilder.set_app_name("Blast Engine")
 									.set_engine_name("Blast Engine")
 									.set_engine_version(VK_MAKE_VERSION(0, 2, 0))
-									.set_app_version(VK_API_VERSION_1_4);
+									.require_api_version(VK_API_VERSION_1_4);
 	
 	auto systemInfo_ret = vkb::SystemInfo::get_system_info();
 	if (!systemInfo_ret) {
@@ -181,23 +181,23 @@ VkShaderModule App::createShaderModule(const std::vector<char> binaryShader) {
 }
 
 void App::createGraphicPipeline() {
-	std::vector<char> shaderVert = readFile("shaders/firstShaderVert.spv");
-	std::vector<char> shaderFrag = readFile("shaders/firstShaderFrag.spv");
+	std::vector<char> shader = readFile("shaders/firstShader.spv");
+	//std::vector<char> shaderFrag = readFile("shaders/firstShaderFrag.spv");
 
-	VkShaderModule shaderVertModule = createShaderModule(shaderVert);
-	VkShaderModule shaderFragModule = createShaderModule(shaderFrag);
+	VkShaderModule shaderModule = createShaderModule(shader);
+	//VkShaderModule shaderFragModule = createShaderModule(shaderFrag);
 
 	VkPipelineShaderStageCreateInfo shaderVertCreateInfo{};
 	shaderVertCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderVertCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderVertCreateInfo.module = shaderVertModule;
-	shaderVertCreateInfo.pName = "main";
+	shaderVertCreateInfo.module = shaderModule;
+	shaderVertCreateInfo.pName = "vertexMain";
 
 	VkPipelineShaderStageCreateInfo shaderFragCreateInfo{};
 	shaderFragCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderFragCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderFragCreateInfo.module = shaderFragModule;
-	shaderFragCreateInfo.pName = "main";
+	shaderFragCreateInfo.module = shaderModule;
+	shaderFragCreateInfo.pName = "fragmentMain";
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = {shaderVertCreateInfo, shaderFragCreateInfo};
 
@@ -314,8 +314,8 @@ void App::createGraphicPipeline() {
 		throw std::runtime_error("failed to create graphics pipeline!!");
 	}
 
-	vkDestroyShaderModule(vkbDevice.device, shaderVertModule, nullptr);
-  vkDestroyShaderModule(vkbDevice.device, shaderFragModule, nullptr);
+	//vkDestroyShaderModule(vkbDevice.device, shaderVertModule, nullptr);
+  vkDestroyShaderModule(vkbDevice.device, shaderModule, nullptr);
 }
 
 void App::createRenderPass() {
