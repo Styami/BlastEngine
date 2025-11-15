@@ -1,10 +1,19 @@
 module vertexModule;
 
-public struct Vertex {
-    public __init(float4 position, float4 color) {
+public struct VSInput {
+    public __init(float2 position, float3 color) {
         this.position = position;
         this.color = color;
     }
-    float4 position : SV_Position;
-    float4 color : SV_Target0;
-}
+    public float2 position;
+    public float3 color;
+};
+
+public struct VSOutput {
+    public __init(float4 position, float3 color) {
+        this.position = position;
+        this.color = color;
+    }
+    public float4 position : SV_Position;
+    public float3 color;
+};
