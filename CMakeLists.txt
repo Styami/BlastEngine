@@ -44,6 +44,7 @@ foreach(SLANG ${SLANG_SOURCE_FILES})
 			OUTPUT ${BINARY_FILE}
 			COMMAND ${SLANG_COMPILATOR} ${SLANG} -o ${BINARY_FILE}
 			DEPENDS ${SLANG})
+			list(APPEND MODULE_FILES ${BINARY_FILE})
 	else()
 		set(ENTRY_POINT -entry fragmentMain -entry vertexMain)
 		set(BINARY_FILE "${SHADER_PATH}.spv")
@@ -52,15 +53,14 @@ foreach(SLANG ${SLANG_SOURCE_FILES})
 			COMMAND ${SLANG_COMPILATOR} ${SLANG} -target spirv -profile spirv_1_4 ${ENTRY_POINT} -o ${BINARY_FILE}
 			DEPENDS ${SLANG}
 			VERBATIM)
-  		list(APPEND BINARY_FILES ${GLSL_FILE})
+			list(APPEND SHADER_FILES ${BINARY_FILE})
 	endif()
-  
-  list(APPEND BINARY_FILES ${BINARY_FILE})
 endforeach(SLANG)
 
 add_custom_target(
 	Shaders
-	DEPENDS ${BINARY_FILES}
+	DEPENDS ${MODULE_FILES} 
+	DEPENDS ${SHADER_FILES}
 )
 
 add_dependencies(BlastEngine 

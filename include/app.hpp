@@ -1,124 +1,16 @@
-#ifndef APP_HPP
-#define APP_HPP
+#ifndef BLASTENGINE_HPP
+#define BLASTENGINE_HPP
 
-#include <vulkan/vulkan.hpp>
-#include <filesystem>
-#include "VkBootstrap.h"
-#include "window.hpp"
-#include <vector>
+#include "engine.hpp"
 
-const int MAX_FRAME_IN_FLIGHT = 2;
-class App
-{
-	public:
-		App();
-		void run();
-
-
-	private:
-
-		struct QueueFamilyIndices {
-			std::optional<uint32_t> graphicsFamily;
-			std::optional<uint32_t> presentFamily;
-
-			inline bool is_complete() {
-				return graphicsFamily.has_value() 
-						&& presentFamily.has_value();
-			}
-		};
-
-		struct SwapChainSupportDetails {
-			VkSurfaceCapabilitiesKHR capabilities;
-			std::vector<VkSurfaceFormatKHR> formats;
-			std::vector<VkPresentModeKHR> presentModes;
-
-			inline bool is_supported() {
-				return !formats.empty()
-						&& !presentModes.empty();
-			}
-		};
-		
-		void initVulkan();
-
-		void createInstance();
-
-		void mainLoop();
-
-		void cleanUp();
-
-		void getPhysicalDevice();
-
-		void getQueueFamilies();
-
-		void createLogicalDevice();
-
-		void createSurface();
-		
-		void createSwapChain();
-		
-		void recreateSwapChain();
-
-		void cleanUpSwapChain();
-		
-		void createImageViews();
-
-		std::vector<char> readFile(const std::filesystem::path& fileName);
-		
-		VkShaderModule createShaderModule(const std::vector<char> binaryShader);
-
-		void createGraphicPipeline();
-
-		void createRenderPass();
-
-		void createFrameBuffers();
-
-		void createCommandPool();
-
-		void createCommandBuffers();
-
-		void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-
-		void createSyncObjects();
-
-		void drawFrame();
-		
-		vkb::Instance vkbInstance;
-		vkb::PhysicalDevice vkbPhysicalDevice;
-		vkb::Device vkbDevice;
-		vkb::Swapchain vkbSwapChain;
-		Window renderer;
-		VkSurfaceKHR surface;
-		VkQueue graphicsQueue;
-		VkQueue presentQueue;
-		std::vector<VkImage> swapChainImages;
-		std::vector<VkImageView> swapChainImageViews;
-		VkRenderPass renderPass;
-		VkPipelineLayout pipelineLayout;
-		VkPipeline graphicsPipeline;
-		std::vector<VkFramebuffer> swapChainFrameBuffers;
-		VkCommandPool commandPool;
-		std::array<VkCommandBuffer, MAX_FRAME_IN_FLIGHT> commandBuffers;
-		std::array<VkSemaphore, MAX_FRAME_IN_FLIGHT> imageAvailableSemaphores;
-		std::array<VkSemaphore, MAX_FRAME_IN_FLIGHT> renderFinishedSemaphores;
-		std::array<VkFence, MAX_FRAME_IN_FLIGHT> inFlightFences;
-
-		bool appRunning = true;
-		uint32_t currentFrame = 0;
-		
-		const std::vector<const char*> validationLayers = {
-			"VK_LAYER_KHRONOS_validation"
-		};
-
-		const std::vector<const char*> deviceExtensions = {
-			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-			VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME
-		};
-
-		#ifdef NDEBUG
-		const bool enableValidationLayers = false;
-		#else
-		const bool enableValidationLayers = true;
-		#endif
+class App {
+  public:
+    App();
+    
+    void run();
+  
+  private:
+    Engine engine;
 };
 
 #endif

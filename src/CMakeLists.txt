@@ -1,5 +1,6 @@
 target_sources(BlastEngine PUBLIC
 	window.cpp
 	main.cpp
+	engine.cpp
 	app.cpp
 )
