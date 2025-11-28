@@ -16,12 +16,12 @@ void Window::init(const std::string& title) {
 	glfwSetFramebufferSizeCallback(window, frameBufferResizeCallback);
 }
 
-void Window::frameBufferResizeCallback(GLFWwindow* window, int width, int height) {
+void Window::frameBufferResizeCallback(GLFWwindow* window, int, int) {
 	auto renderer = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 	renderer->framebufferResized = true;
 }
 
-const bool Window::hasFrameBufferResized() const {
+bool Window::hasFrameBufferResized() const {
 	return framebufferResized;
 }
 
@@ -37,7 +37,7 @@ const char** Window::getExtensions(unsigned int& extensionCount) {
 	return glfwGetRequiredInstanceExtensions(&extensionCount);
 }
 
-const int Window::loop() {
+int Window::loop() {
 	glfwPollEvents();
 	return glfwWindowShouldClose(window);
 }
