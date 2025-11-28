@@ -3,4 +3,5 @@ target_sources(BlastEngine PUBLIC
 	main.cpp
 	engine.cpp
 	app.cpp
+	shaderCompiler.cpp
 )

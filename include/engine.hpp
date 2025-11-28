@@ -45,8 +45,8 @@ class Engine
 		void createImageViews();
 
 		std::vector<char> readFile(const std::filesystem::path& fileName);
-		
-		VkShaderModule createShaderModule(const std::vector<char> binaryShader);
+
+		VkShaderModule createShaderModule(const std::string& binaryShader, const size_t size);
 
 		void createGraphicPipeline();
 

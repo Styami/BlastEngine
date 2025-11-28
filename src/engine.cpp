@@ -6,6 +6,7 @@
 #include <fstream>
 #include <algorithm>
 #include <memory>
+#include "shaderCompiler.hpp"
 
 
 Engine::Engine()
@@ -114,13 +115,13 @@ void Engine::recreateSwapChain() {
 }
 
 void Engine::createImageViews() {
-	const std::vector<VkImage>& swapChainImages = vkbSwapChain.get_images().value();
+	const std::vector<VkImage>& images = vkbSwapChain.get_images().value();
 	swapChainImageViews.resize(vkbSwapChain.image_count);
-	for (size_t i = 0; i < swapChainImageViews.size(); i++)
+	for (size_t i = 0; i < images.size(); i++)
 	{
 		VkImageViewCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		createInfo.image = swapChainImages[i];
+		createInfo.image = images[i];
 
 		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		createInfo.format = vkbSwapChain.image_format;
@@ -163,11 +164,11 @@ std::vector<char> Engine::readFile(const std::filesystem::path& fileName) {
 	return buffer;
 }
 
-VkShaderModule Engine::createShaderModule(const std::vector<char> binaryShader) {
+VkShaderModule Engine::createShaderModule(const std::string& binaryShader, const size_t ) {
 	VkShaderModuleCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = binaryShader.size();
-	createInfo.pCode = reinterpret_cast<const uint32_t*>(binaryShader.data());
+	createInfo.pCode = reinterpret_cast<const uint32_t*>(binaryShader.c_str());
 
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule(vkbDevice.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
@@ -178,9 +179,17 @@ VkShaderModule Engine::createShaderModule(const std::vector<char> binaryShader) 
 }
 
 void Engine::createGraphicPipeline() {
-	std::vector<char> shader = readFile("shaders/firstShader.spv");
-
-	VkShaderModule shaderModule = createShaderModule(shader);
+	ShaderCompiler compiler;
+	compiler.createSession(SLANG_SPIRV, "spirv_1_5");
+	std::cout << std::filesystem::current_path().string() << std::endl;
+	std::ifstream file("shaders/firstShader.slang", std::ios::ate);
+	size_t sizeFile = file.tellg();
+	std::string shaderSource = std::string(sizeFile, '\0');
+	file.seekg(std::ios::beg);
+	file.read(&shaderSource[0], sizeFile);
+	std::string shader = compiler.loadProgram("firstShader", "shaders/firstShader.slang", shaderSource); //readFile("shaders/firstShader.spv");
+	//std::vector<char> shader = readFile(shader, sizeFile);
+	VkShaderModule shaderModule = createShaderModule(shader, sizeFile);
 
 	VkPipelineShaderStageCreateInfo shaderVertCreateInfo{};
 	shaderVertCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -400,7 +409,7 @@ void Engine::createCommandBuffers() {
 	allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocateInfo.commandPool = commandPool;
 	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocateInfo.commandBufferCount = commandBuffers.size();
+	allocateInfo.commandBufferCount = (uint32_t)commandBuffers.size();
 
 	if(vkAllocateCommandBuffers(vkbDevice.device, &allocateInfo, commandBuffers.data()) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate command buffers!");
@@ -425,7 +434,7 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
 	renderPassInfo.renderArea.offset = {0, 0};
 	renderPassInfo.renderArea.extent = vkbSwapChain.extent;
 	
-	VkClearValue clearColor = {{{0.01, 0.01, 0.01, 1.0}}};
+	VkClearValue clearColor = {{{0.01f, 0.01f, 0.01f, 1.0f}}};
 	renderPassInfo.clearValueCount = 1;
 	renderPassInfo.pClearValues = &clearColor;
 
@@ -435,8 +444,8 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
 	VkViewport viewport{};
 	viewport.x = 0;
 	viewport.y = 0;
-	viewport.height = vkbSwapChain.extent.height;
-	viewport.width = vkbSwapChain.extent.width;
+	viewport.height = (float)vkbSwapChain.extent.height;
+	viewport.width = (float)vkbSwapChain.extent.width;
 	viewport.minDepth = 0;
 	viewport.maxDepth = 1;
 	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
@@ -500,13 +509,13 @@ void Engine::drawFrame() {
 	std::array<VkSemaphore, 1> waitSemaphores = {imageAvailableSemaphores[currentFrame]};
 	std::array<VkPipelineStageFlags, 1> waitStage = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 	submitInfo.pWaitSemaphores = waitSemaphores.data();
-	submitInfo.waitSemaphoreCount = waitSemaphores.size();
+	submitInfo.waitSemaphoreCount = (uint32_t)waitSemaphores.size();
 	submitInfo.pWaitDstStageMask = waitStage.data();
 	submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
 	submitInfo.commandBufferCount = 1;
 	std::array<VkSemaphore, 1> signaledSemaphores = {renderFinishedSemaphores[currentFrame]};
 	submitInfo.pSignalSemaphores = signaledSemaphores.data();
-	submitInfo.signalSemaphoreCount = signaledSemaphores.size();
+	submitInfo.signalSemaphoreCount = (uint32_t)signaledSemaphores.size();
 
 	if(vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to submit queue.");
@@ -518,7 +527,7 @@ void Engine::drawFrame() {
 	presentInfo.waitSemaphoreCount = 1;
 	std::array<VkSwapchainKHR, 1> swapChains = {vkbSwapChain.swapchain};
 	presentInfo.pSwapchains = swapChains.data();
-	presentInfo.swapchainCount = swapChains.size();
+	presentInfo.swapchainCount = (uint32_t)swapChains.size();
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = nullptr; // Optional
 	

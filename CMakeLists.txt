@@ -5,6 +5,17 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
+add_executable(BlastEngine)
+
+if(MSVC)
+  target_compile_options(BlastEngine PRIVATE /W4 /WX)
+elseif(MINGW)
+	target_compile_options(BlastEngine PRIVATE -Wall -Wextra -Wpedantic -Werror -g)
+	target_link_libraries(BlastEngine PRIVATE -lstdc++exp)
+else()
+  target_compile_options(BlastEngine PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+
 if(WIN32)
 add_subdirectory("C:/glfw-3.4/" glfw3)
 elseif(UNIX)
@@ -12,8 +23,8 @@ find_package(glfw3 3.4 REQUIRED)
 endif()
 
 find_package(Vulkan REQUIRED)
+find_package(slang REQUIRED)
 
-add_executable(BlastEngine)
 add_subdirectory(include)
 add_subdirectory(src)
 add_subdirectory(ext/vk-bootstrap)
@@ -23,6 +34,7 @@ target_link_libraries(BlastEngine PRIVATE
 	glfw
 	Vulkan::Vulkan
 	vk-bootstrap::vk-bootstrap
+	slang::slang
 )
 
 ### SHADER PART ###
@@ -57,12 +69,12 @@ foreach(SLANG ${SLANG_SOURCE_FILES})
 	endif()
 endforeach(SLANG)
 
-add_custom_target(
-	Shaders
-	DEPENDS ${MODULE_FILES} 
-	DEPENDS ${SHADER_FILES}
-)
+# add_custom_target(
+# 	Shaders
+# 	DEPENDS ${MODULE_FILES} 
+# 	DEPENDS ${SHADER_FILES}
+# )
 
 add_dependencies(BlastEngine 
-	Shaders
+	#Shaders
 )
