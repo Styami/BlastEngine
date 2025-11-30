@@ -17,5 +17,5 @@ public:
   ShaderCompiler();
   //ShaderCompiler& setTarget();
   void createSession(const SlangCompileTarget format, const std::string& profile);
-  std::string  loadProgram(const std::string& moduleNames, const std::filesystem::path& modulePath, const std::string& moduleSources);
+  std::string  loadProgram(const std::string& moduleNames);
 };

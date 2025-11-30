@@ -50,11 +50,11 @@ void ShaderCompiler::diagnoseIfNeeded(slang::IBlob* diagnosticBlob) const {
   }
 }
 
-std::string ShaderCompiler::loadProgram(const std::string& , const std::filesystem::path& , const std::string& ) {
+std::string ShaderCompiler::loadProgram(const std::string& moduleNames) {
   Slang::ComPtr<slang::IModule> slangModule;
   Slang::ComPtr<slang::IBlob> diagnosticsBlob; // Permit to know every warning or error during compilation pipeline
   
-  slangModule = session->loadModule("firstShader",diagnosticsBlob.writeRef());
+  slangModule = session->loadModule(moduleNames.c_str(),diagnosticsBlob.writeRef());
   diagnoseIfNeeded(diagnosticsBlob);
   if(!slangModule)
     throw std::runtime_error("Failed to load Slang shader.");
@@ -64,9 +64,8 @@ std::string ShaderCompiler::loadProgram(const std::string& , const std::filesyst
   Slang::ComPtr<slang::IComponentType> linkedProgram;
   Slang::Result result = slangModule->link(linkedProgram.writeRef(), diagnosticsBlob.writeRef());
   diagnoseIfNeeded(diagnosticsBlob);
-  if (SLANG_FAILED(result)){
+  if (SLANG_FAILED(result))
     throw std::runtime_error("Failed to link program.");
-  }
 
   Slang::ComPtr<slang::IBlob> compiledCodeObject;
   result = linkedProgram->getTargetCode(0, compiledCodeObject.writeRef(), diagnosticsBlob.writeRef());

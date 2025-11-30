@@ -144,27 +144,7 @@ void Engine::createImageViews() {
 	
 }
 
-std::vector<char> Engine::readFile(const std::filesystem::path& fileName) {
-	std::string test = std::filesystem::current_path().string();
-	if (!std::filesystem::exists(fileName)) {
-		throw (std::format("File : \"{}\" does not exist!", fileName.string()));
-	}
-	std::ifstream file(fileName, std::ios::ate | std::ios::binary);
-	if (!file.is_open())
-	{
-		throw (std::format("File : \"{}\" could not have been open!", fileName.string()));
-	}
-	size_t size_file = (size_t)file.tellg();
-	std::vector<char>buffer(size_file);
-
-	file.seekg(0, std::ios::beg);
-	file.read(buffer.data(), static_cast<std::streamsize>(size_file));
-	file.close();
-
-	return buffer;
-}
-
-VkShaderModule Engine::createShaderModule(const std::string& binaryShader, const size_t ) {
+VkShaderModule Engine::createShaderModule(const std::string& binaryShader) {
 	VkShaderModuleCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = binaryShader.size();
@@ -181,15 +161,8 @@ VkShaderModule Engine::createShaderModule(const std::string& binaryShader, const
 void Engine::createGraphicPipeline() {
 	ShaderCompiler compiler;
 	compiler.createSession(SLANG_SPIRV, "spirv_1_5");
-	std::cout << std::filesystem::current_path().string() << std::endl;
-	std::ifstream file("shaders/firstShader.slang", std::ios::ate);
-	size_t sizeFile = file.tellg();
-	std::string shaderSource = std::string(sizeFile, '\0');
-	file.seekg(std::ios::beg);
-	file.read(&shaderSource[0], sizeFile);
-	std::string shader = compiler.loadProgram("firstShader", "shaders/firstShader.slang", shaderSource); //readFile("shaders/firstShader.spv");
-	//std::vector<char> shader = readFile(shader, sizeFile);
-	VkShaderModule shaderModule = createShaderModule(shader, sizeFile);
+	std::string shader = compiler.loadProgram("firstShader");
+	VkShaderModule shaderModule = createShaderModule(shader);
 
 	VkPipelineShaderStageCreateInfo shaderVertCreateInfo{};
 	shaderVertCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
