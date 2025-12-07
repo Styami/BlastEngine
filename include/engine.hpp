@@ -1,5 +1,5 @@
-#ifndef APP_HPP
-#define APP_HPP
+#ifndef ENGINE_HPP
+#define ENGINE_HPP
 
 #include <vulkan/vulkan.hpp>
 #include <filesystem>
@@ -59,6 +59,8 @@ class Engine
 		void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 		void createSyncObjects();
+
+		void loadObjects();
 		
 		vkb::Instance vkbInstance;
 		vkb::PhysicalDevice vkbPhysicalDevice;
