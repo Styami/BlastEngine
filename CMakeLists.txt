@@ -24,6 +24,7 @@ endif()
 
 find_package(Vulkan REQUIRED)
 find_package(slang REQUIRED)
+find_package(glm REQUIRED)
 
 add_subdirectory(include)
 add_subdirectory(src)
@@ -35,6 +36,7 @@ target_link_libraries(BlastEngine PRIVATE
 	Vulkan::Vulkan
 	vk-bootstrap::vk-bootstrap
 	slang::slang
+	glm::glm
 )
 
 ### SHADER PART ###
@@ -75,6 +77,6 @@ endforeach(SLANG)
 # 	DEPENDS ${SHADER_FILES}
 # )
 
-add_dependencies(BlastEngine 
+#add_dependencies(BlastEngine 
 	#Shaders
-)
+#)

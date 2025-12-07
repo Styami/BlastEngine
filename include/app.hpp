@@ -1,5 +1,5 @@
-#ifndef BLASTENGINE_HPP
-#define BLASTENGINE_HPP
+#ifndef APP_HPP
+#define APP_HPP
 
 #include "engine.hpp"
 

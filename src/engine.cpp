@@ -2,10 +2,11 @@
 #include "VkBootstrap.h"
 #include <stdexcept>
 #include <print>
-#include <iostream>
 #include <fstream>
 #include <algorithm>
 #include <memory>
+#include <vulkan/vulkan_core.h>
+#include "vertex.hpp"
 #include "shaderCompiler.hpp"
 
 
@@ -181,10 +182,12 @@ void Engine::createGraphicPipeline() {
 	
 	VkPipelineVertexInputStateCreateInfo vertexInputInfos {};
 	vertexInputInfos.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfos.vertexAttributeDescriptionCount = 0;
-	vertexInputInfos.pVertexAttributeDescriptions = nullptr;
-	vertexInputInfos.vertexBindingDescriptionCount = 0;
-	vertexInputInfos.pVertexBindingDescriptions = nullptr;
+	auto vertexBindingDesc = Vertex::getBindingDescription();
+	auto vertexAttriDesc = Vertex::getAttributeDescriptions();
+	vertexInputInfos.vertexBindingDescriptionCount = 1;
+	vertexInputInfos.pVertexBindingDescriptions = &vertexBindingDesc;
+	vertexInputInfos.vertexAttributeDescriptionCount = 1;
+	vertexInputInfos.pVertexAttributeDescriptions = vertexAttriDesc.data(); 
 	
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -365,6 +368,15 @@ void Engine::createFrameBuffers() {
 		}
 	}
 
+}
+
+void Engine::loadObjects() {
+	std::vector<Vertex> vertices = {
+		{{0, 0.5}, {1, 0, 0}},
+		{{-0.5, -0.5}, {0, 1, 0}},
+		{{0.5, -0.5}, {0, 0, 1}}
+	};
+	
 }
 
 void Engine::createCommandPool() {
