@@ -1,13 +1,12 @@
 #include "engine.hpp"
-#include "VkBootstrap.h"
-#include <stdexcept>
-#include <print>
-#include <fstream>
-#include <algorithm>
-#include <memory>
-#include <vulkan/vulkan_core.h>
-#include "vertex.hpp"
 #include "shaderCompiler.hpp"
+#include "vertex.hpp"
+#include <cstring>
+#include <print>
+#include <algorithm>
+#include <stdexcept>
+#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan_handles.hpp>
 
 
 Engine::Engine()
@@ -29,18 +28,12 @@ void Engine::createInstance() {
 	}
 	vkb::SystemInfo systemInfo = systemInfo_ret.value();
 
-	std::ranges::for_each(validationLayers, [&systemInfo, & instanceBuilder](const char* c) {
-		if (systemInfo.is_layer_available(c)) {
-			instanceBuilder.enable_validation_layers(c);
-		}
-	});
-
 	std::ranges::for_each(deviceExtensions, [&systemInfo, & instanceBuilder](const char* c) {
 		if (systemInfo.is_extension_available(c)) {
 			instanceBuilder.enable_extension(c);
 		}
 	});
-	instanceBuilder.use_default_debug_messenger();
+
 	auto instanceBuildRet = instanceBuilder.build();
 	if(!instanceBuildRet) {
 		throw std::runtime_error("failed to create instance\n");	
@@ -72,6 +65,7 @@ void Engine::createLogicalDevice() {
 		throw std::runtime_error("Failed to create logical device.");
 	}
 	vkbDevice = builderRet.value();
+		
 }
 
 void Engine::getQueueFamilies() {
@@ -172,7 +166,7 @@ void Engine::createGraphicPipeline() {
 	shaderVertCreateInfo.pName = "vertexMain";
 
 	VkPipelineShaderStageCreateInfo shaderFragCreateInfo{};
-	shaderFragCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	//shaderFragCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderFragCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 	shaderFragCreateInfo.module = shaderModule;
 	shaderFragCreateInfo.pName = "fragmentMain";
@@ -186,7 +180,7 @@ void Engine::createGraphicPipeline() {
 	auto vertexAttriDesc = Vertex::getAttributeDescriptions();
 	vertexInputInfos.vertexBindingDescriptionCount = 1;
 	vertexInputInfos.pVertexBindingDescriptions = &vertexBindingDesc;
-	vertexInputInfos.vertexAttributeDescriptionCount = 1;
+	vertexInputInfos.vertexAttributeDescriptionCount = vertexAttriDesc.size();
 	vertexInputInfos.pVertexAttributeDescriptions = vertexAttriDesc.data(); 
 	
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -371,12 +365,7 @@ void Engine::createFrameBuffers() {
 }
 
 void Engine::loadObjects() {
-	std::vector<Vertex> vertices = {
-		{{0, 0.5}, {1, 0, 0}},
-		{{-0.5, -0.5}, {0, 1, 0}},
-		{{0.5, -0.5}, {0, 0, 1}}
-	};
-	
+	objects.push_back(Object());
 }
 
 void Engine::createCommandPool() {
@@ -387,6 +376,58 @@ void Engine::createCommandPool() {
 
 	if(vkCreateCommandPool(vkbDevice.device, &commandPoolCreateInfo, nullptr, &commandPool) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create command pool!");
+}
+
+uint32_t Engine::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+	VkPhysicalDeviceMemoryProperties memProp;
+	vkGetPhysicalDeviceMemoryProperties(vkbPhysicalDevice.physical_device, &memProp);
+
+	for (uint32_t i = 0; i < memProp.memoryTypeCount; i++) {
+		// This bitwise operation permits to know if the property flag can be OK for our properties
+		// Then the equality permits to verify that the selected flag satisfy ALL our properties. 
+		if ((typeFilter & (1 << i)) && (memProp.memoryTypes[i].propertyFlags & properties) == properties) {
+			return i;
+		}
+	}
+	throw std::runtime_error("Failed to find a correct memory type!");
+}
+
+void Engine::createVertexBuffer() {
+	loadObjects(); // temporary. IT HAS TO BE CHANGE IN FUTURE!!!!!!!
+	std::vector<Vertex> verticesToRender;
+	for (Object object : objects) {
+		//vertexNumber += object.getVertices().size();
+		std::ranges::for_each(object.getVertices(), [&verticesToRender](const Vertex& v) {
+			verticesToRender.push_back(v);
+		});
+		//verticesToRender.append_ranges(object.getVertices());
+	}
+	VkBufferCreateInfo vboInfo{};
+	vboInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	vboInfo.size = sizeof(Vertex) * verticesToRender.size();
+	vboInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	vboInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	
+	if (vkCreateBuffer(vkbDevice.device, &vboInfo, nullptr, &vbo) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create VBO!");
+
+	VkMemoryRequirements memoryRequirements;
+	vkGetBufferMemoryRequirements(vkbDevice.device, vbo, &memoryRequirements);
+
+	VkMemoryAllocateInfo memoryAllocateInfo{};
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.allocationSize = memoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	
+	
+	if(vkAllocateMemory(vkbDevice.device, &memoryAllocateInfo, nullptr, &vboMemory) != VK_SUCCESS)
+		throw std::runtime_error("Failed to allocate memory!");
+	vkBindBufferMemory(vkbDevice.device, vbo, vboMemory, 0);
+
+	void* data;
+	vkMapMemory(vkbDevice.device, vboMemory, 0, vboInfo.size, 0, &data);
+	memcpy(data, verticesToRender.data(), sizeof(Vertex) * verticesToRender.size());
+	vkUnmapMemory(vkbDevice.device, vboMemory);
 }
 
 void Engine::createCommandBuffers() {
@@ -425,6 +466,9 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
 
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+	//VkBuffer vbos[] = {vbo};
+	VkDeviceSize offests[] = {0};
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vbo, offests);
 
 	VkViewport viewport{};
 	viewport.x = 0;
@@ -543,6 +587,7 @@ void Engine::initVulkan() {
 	createGraphicPipeline();
 	createFrameBuffers();
 	createCommandPool();
+	createVertexBuffer();
 	createCommandBuffers();
 	createSyncObjects();
 }
@@ -571,6 +616,8 @@ void Engine::cleanUp() {
 	vkDestroyPipelineLayout(vkbDevice.device, pipelineLayout, nullptr);
 	vkDestroyRenderPass(vkbDevice.device, renderPass, nullptr);
 	vkDestroyPipeline(vkbDevice.device, graphicsPipeline, nullptr);
+	vkDestroyBuffer(vkbDevice.device, vbo, nullptr);
+	vkFreeMemory(vkbDevice.device, vboMemory, nullptr);
 	vkDestroyCommandPool(vkbDevice.device, commandPool, nullptr);
 	for(size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) { 
 		vkDestroySemaphore(vkbDevice.device, renderFinishedSemaphores[i], nullptr);

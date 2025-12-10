@@ -1,7 +1,6 @@
 import "vertexModule";
 
 [shader("vertex")]
-
 VSOutput vertexMain(VSInput input) {
   float4 position = float4(input.position, 0, 1);
   VSOutput output = VSOutput(position, input.color);
