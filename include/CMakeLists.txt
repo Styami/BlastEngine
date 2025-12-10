@@ -4,4 +4,5 @@ target_sources(BlastEngine PUBLIC
 	app.hpp
 	shaderCompiler.hpp
 	vertex.hpp
+	object.hpp
 )

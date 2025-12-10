@@ -13,7 +13,7 @@ elseif(MINGW)
 	target_compile_options(BlastEngine PRIVATE -Wall -Wextra -Wpedantic -Werror -g)
 	target_link_libraries(BlastEngine PRIVATE -lstdc++exp)
 else()
-  target_compile_options(BlastEngine PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  target_compile_options(BlastEngine PRIVATE -Wall -Wextra -Wpedantic -Werror -g)
 endif()
 
 if(WIN32)

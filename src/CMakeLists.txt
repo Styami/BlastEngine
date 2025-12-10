@@ -5,4 +5,5 @@ target_sources(BlastEngine PUBLIC
 	app.cpp
 	shaderCompiler.cpp
 	vertex.cpp
+	object.cpp
 )

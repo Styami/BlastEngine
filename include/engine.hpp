@@ -1,11 +1,13 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
+#include <cstdint>
 #include <vulkan/vulkan.hpp>
 #include <filesystem>
+#include <vulkan/vulkan_handles.hpp>
 #include "VkBootstrap.h"
 #include "window.hpp"
-#include <vector>
+#include "object.hpp"
 
 const int MAX_FRAME_IN_FLIGHT = 2;
 class Engine
@@ -60,8 +62,13 @@ class Engine
 
 		void createSyncObjects();
 
+		void createVertexBuffer();
+
+		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
 		void loadObjects();
-		
+
+
 		vkb::Instance vkbInstance;
 		vkb::PhysicalDevice vkbPhysicalDevice;
 		vkb::Device vkbDevice;
@@ -81,24 +88,17 @@ class Engine
 		std::array<VkSemaphore, MAX_FRAME_IN_FLIGHT> imageAvailableSemaphores;
 		std::array<VkSemaphore, MAX_FRAME_IN_FLIGHT> renderFinishedSemaphores;
 		std::array<VkFence, MAX_FRAME_IN_FLIGHT> inFlightFences;
+		std::vector<Object> objects;
+		VkBuffer vbo;
+		VkDeviceMemory vboMemory;
 
 		bool engineRunning = true;
 		uint32_t currentFrame = 0;
-		
-		const std::vector<const char*> validationLayers = {
-			"VK_LAYER_KHRONOS_validation"
-		};
 
 		const std::vector<const char*> deviceExtensions = {
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 			VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME
 		};
-
-		#ifdef NDEBUG
-		const bool enableValidationLayers = false;
-		#else
-		const bool enableValidationLayers = true;
-		#endif
 };
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef OBJECT_HPP
-#define OBJECT_HPP
+#ifndef VERTEX_HPP
+#define VERTEX_HPP
 #include "glm/glm.hpp"
 #include <array>
 #include <vulkan/vulkan.hpp>
