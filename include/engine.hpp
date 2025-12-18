@@ -1,10 +1,8 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
-#include <cstdint>
 #include <vulkan/vulkan.hpp>
 #include <filesystem>
-#include <vulkan/vulkan_handles.hpp>
 #include "VkBootstrap.h"
 #include "window.hpp"
 #include "object.hpp"
@@ -46,58 +44,72 @@ class Engine
 		
 		void createImageViews();
 
-		VkShaderModule createShaderModule(const std::string& binaryShader);
+		vk::ShaderModule createShaderModule(const std::string& binaryShader);
 
 		void createGraphicPipeline();
-
-		void createRenderPass();
-
-		void createFrameBuffers();
 
 		void createCommandPool();
 
 		void createCommandBuffers();
 
-		void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+		void transition_image_layout(
+			vk::CommandBuffer commandBuffer,
+			uint32_t imageIndex,
+			vk::ImageLayout oldLayout,
+			vk::ImageLayout newLayout,
+			vk::AccessFlags2 srcAccessMask,
+			vk::AccessFlags2 dstAccessMask,
+			vk::PipelineStageFlags2 srcStageMask,
+			vk::PipelineStageFlags2 dstStageMask
+		);
+
+		void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
 
 		void createSyncObjects();
 
 		void createVertexBuffer();
 
-		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+		uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
 
 		void loadObjects();
 
-
 		vkb::Instance vkbInstance;
+		vk::Instance vkInstance;
 		vkb::PhysicalDevice vkbPhysicalDevice;
+		vk::PhysicalDevice vkPhysicalDevice;
 		vkb::Device vkbDevice;
+		vk::Device vkDevice;
 		vkb::Swapchain vkbSwapChain;
+		vk::SwapchainKHR vkSwapChain;
+		vk::Extent2D swapChainExtent;
+		vk::Format swapChainImageFormat;
 		Window renderer;
-		VkSurfaceKHR surface;
-		VkQueue graphicsQueue;
-		VkQueue presentQueue;
-		std::vector<VkImage> swapChainImages;
-		std::vector<VkImageView> swapChainImageViews;
-		VkRenderPass renderPass;
-		VkPipelineLayout pipelineLayout;
-		VkPipeline graphicsPipeline;
+		vk::SurfaceKHR surface;
+		vk::Queue graphicsQueue;
+		vk::Queue presentQueue;
+		std::vector<vk::Image> swapChainImages;
+		std::vector<vk::ImageView> swapChainImageViews;
+		vk::RenderPass renderPass;
+		vk::PipelineLayout pipelineLayout;
+		vk::Pipeline graphicsPipeline;
 		std::vector<VkFramebuffer> swapChainFrameBuffers;
-		VkCommandPool commandPool;
-		std::array<VkCommandBuffer, MAX_FRAME_IN_FLIGHT> commandBuffers;
-		std::array<VkSemaphore, MAX_FRAME_IN_FLIGHT> imageAvailableSemaphores;
-		std::array<VkSemaphore, MAX_FRAME_IN_FLIGHT> renderFinishedSemaphores;
-		std::array<VkFence, MAX_FRAME_IN_FLIGHT> inFlightFences;
+		vk::CommandPool commandPool;
+		std::array<vk::CommandBuffer, MAX_FRAME_IN_FLIGHT> commandBuffers;
+		std::array<vk::Semaphore, MAX_FRAME_IN_FLIGHT> imageAvailableSemaphores;
+		std::array<vk::Semaphore, MAX_FRAME_IN_FLIGHT> renderFinishedSemaphores;
+		std::array<vk::Fence, MAX_FRAME_IN_FLIGHT> inFlightFences;
 		std::vector<Object> objects;
-		VkBuffer vbo;
-		VkDeviceMemory vboMemory;
+		vk::Buffer vbo;
+		vk::DeviceMemory vboMemory;
 
 		bool engineRunning = true;
 		uint32_t currentFrame = 0;
 
 		const std::vector<const char*> deviceExtensions = {
-			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-			VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME
+			vk::KHRSwapchainExtensionName,
+			vk::KHRSpirv14ExtensionName,
+			vk::KHRSynchronization2ExtensionName,
+			vk::KHRCreateRenderpass2ExtensionName
 		};
 };
 
