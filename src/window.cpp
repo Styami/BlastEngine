@@ -1,8 +1,10 @@
 #include "window.hpp"
+#include <GLFW/glfw3.h>
 #include <print>
 
 Window::Window() :
 	window(nullptr),
+	isClosed(false),
 	framebufferResized(false)
 {
 	glfwInit();
@@ -37,9 +39,23 @@ const char** Window::getExtensions(unsigned int& extensionCount) {
 	return glfwGetRequiredInstanceExtensions(&extensionCount);
 }
 
-int Window::loop() {
+void Window::inputCallBack(GLFWwindow* window, int key, int, int action, int) {
+	Window* renderer = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+	if(action == GLFW_PRESS) {
+		switch (key) {
+			case GLFW_KEY_ESCAPE:
+				renderer->isClosed = true;
+				break;
+			default:
+				break;
+		}
+	}
+}
+
+bool Window::loop() {
 	glfwPollEvents();
-	return glfwWindowShouldClose(window);
+	glfwSetKeyCallback(window, inputCallBack);
+	return !(isClosed || glfwWindowShouldClose(window));
 }
 
 void Window::clean() {
