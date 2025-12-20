@@ -2,6 +2,8 @@
 #include "shaderCompiler.hpp"
 #include <ranges>
 #include <print>
+#include <vulkan/vulkan_enums.hpp>
+#include <vulkan/vulkan_structs.hpp>
 
 
 Engine::Engine()
@@ -300,6 +302,51 @@ uint32_t Engine::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags pro
 	throw std::runtime_error("Failed to find a correct memory type!");
 }
 
+std::tuple<vk::Buffer, vk::DeviceMemory> Engine::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::SharingMode sharingMode) {
+		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo(
+		{},
+		size,
+		usage,
+		sharingMode
+	);
+	vk::Buffer buffer = vkDevice.createBuffer(bufferInfo);
+
+	vk::MemoryRequirements memoryRequirements = vkDevice.getBufferMemoryRequirements(buffer);
+	vk::MemoryAllocateInfo memoryAllocateInfo = vk::MemoryAllocateInfo(
+		memoryRequirements.size,
+		findMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
+	);
+	
+	vk::DeviceMemory bufferMemory = vkDevice.allocateMemory(memoryAllocateInfo);
+	vkDevice.bindBufferMemory(buffer, bufferMemory, 0);
+	return {buffer, bufferMemory};
+}
+
+void Engine::copyBuffer(vk::Buffer stagingBuffer, vk::Buffer buffer, vk::DeviceSize size) {
+	vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo(
+		commandPool,
+		vk::CommandBufferLevel::ePrimary,
+		1
+	);
+	vk::CommandBuffer transferCommandBuffer = vkDevice.allocateCommandBuffers(commandBufferInfo).front();
+
+	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo(
+		vk::CommandBufferUsageFlagBits::eOneTimeSubmit
+	);
+	transferCommandBuffer.begin(beginInfo);
+	transferCommandBuffer.copyBuffer(stagingBuffer, buffer, vk::BufferCopy(0, 0, size));
+	transferCommandBuffer.end();
+	graphicsQueue.submit(vk::SubmitInfo(
+		{},
+		{},
+		{},
+		1,
+		&transferCommandBuffer
+	));
+	graphicsQueue.waitIdle();
+	vkDevice.freeCommandBuffers(commandPool, transferCommandBuffer);
+}
+
 void Engine::createVertexBuffer() {
 	loadObjects(); // temporary. IT HAS TO BE CHANGE IN FUTURE!!!!!!!
 	std::vector<Vertex> verticesToRender;
@@ -308,28 +355,17 @@ void Engine::createVertexBuffer() {
 			verticesToRender.push_back(v);
 		});
 	}
-	vk::BufferCreateInfo vboInfo = vk::BufferCreateInfo(
-		{},
-		sizeof(Vertex) * verticesToRender.size(),
-		vk::BufferUsageFlagBits::eVertexBuffer,
-		vk::SharingMode::eExclusive
-	);
-	
-	vbo = vkDevice.createBuffer(vboInfo, nullptr);
+	vk::DeviceSize bufferSize = sizeof(Vertex) * verticesToRender.size();
 
-	vk::MemoryRequirements memoryRequirements = vkDevice.getBufferMemoryRequirements(vbo);
-
-	vk::MemoryAllocateInfo memoryAllocateInfo = vk::MemoryAllocateInfo(
-		memoryRequirements.size,
-		findMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
-	);
-	
-	vboMemory = vkDevice.allocateMemory(memoryAllocateInfo);
-	vkDevice.bindBufferMemory(vbo, vboMemory, 0);
-
-	void* data = vkDevice.mapMemory(vboMemory, 0, vboInfo.size);
+	auto [stagingVbo, stagingVboMemory] = createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive);	
+	void* data = vkDevice.mapMemory(stagingVboMemory, 0, bufferSize);
 	memcpy(data, verticesToRender.data(), sizeof(Vertex) * verticesToRender.size());
-	vkDevice.unmapMemory(vboMemory);
+	vkDevice.unmapMemory(stagingVboMemory);
+
+	std::tie(vbo, vboMemory) = createBuffer(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::SharingMode::eExclusive);
+	copyBuffer(stagingVbo, vbo, bufferSize);
+	vkDevice.destroyBuffer(stagingVbo);
+	vkDevice.freeMemory(stagingVboMemory);
 }
 
 void Engine::createCommandBuffers() {
@@ -548,7 +584,6 @@ void Engine::cleanUpSwapChain() {
 void Engine::cleanUp() {
 	cleanUpSwapChain();
 	vkDestroyPipelineLayout(vkbDevice.device, pipelineLayout, nullptr);
-	vkDestroyRenderPass(vkbDevice.device, renderPass, nullptr);
 	vkDestroyPipeline(vkbDevice.device, graphicsPipeline, nullptr);
 	vkDestroyBuffer(vkbDevice.device, vbo, nullptr);
 	vkFreeMemory(vkbDevice.device, vboMemory, nullptr);

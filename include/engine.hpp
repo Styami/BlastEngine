@@ -1,8 +1,10 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
+#include <tuple>
 #include <vulkan/vulkan.hpp>
 #include <filesystem>
+#include <vulkan/vulkan_handles.hpp>
 #include "VkBootstrap.h"
 #include "window.hpp"
 #include "object.hpp"
@@ -71,6 +73,10 @@ class Engine
 
 		uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
 
+		std::tuple<vk::Buffer, vk::DeviceMemory> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::SharingMode sharingMode);
+
+		void copyBuffer(vk::Buffer stagingBuffer, vk::Buffer buffer, vk::DeviceSize siz);
+
 		void loadObjects();
 
 		vkb::Instance vkbInstance;
@@ -89,7 +95,6 @@ class Engine
 		vk::Queue presentQueue;
 		std::vector<vk::Image> swapChainImages;
 		std::vector<vk::ImageView> swapChainImageViews;
-		vk::RenderPass renderPass;
 		vk::PipelineLayout pipelineLayout;
 		vk::Pipeline graphicsPipeline;
 		std::vector<VkFramebuffer> swapChainFrameBuffers;
