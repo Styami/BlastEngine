@@ -1,7 +1,6 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
-#include <tuple>
 #include <vulkan/vulkan.hpp>
 #include <filesystem>
 #include "VkBootstrap.h"

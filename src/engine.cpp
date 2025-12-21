@@ -520,17 +520,17 @@ void Engine::cleanUpSwapChain() {
 
 void Engine::cleanUp() {
 	cleanUpSwapChain();
-	vkDestroyPipelineLayout(vkbDevice.device, pipelineLayout, nullptr);
+	vkDevice.destroyPipelineLayout(pipelineLayout);
 	vbo.clean();
-	vkDestroyPipeline(vkbDevice.device, graphicsPipeline, nullptr);
-	vkDestroyCommandPool(vkbDevice.device, commandPool, nullptr);
+	vkDevice.destroyPipeline(graphicsPipeline);
+	vkDevice.destroyCommandPool(commandPool);
 	for(size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) { 
-		vkDestroySemaphore(vkbDevice.device, renderFinishedSemaphores[i], nullptr);
-		vkDestroySemaphore(vkbDevice.device, imageAvailableSemaphores[i], nullptr);
-		vkDestroyFence(vkbDevice.device, inFlightFences[i], nullptr);
+		vkDevice.destroySemaphore(renderFinishedSemaphores[i]);
+		vkDevice.destroySemaphore(imageAvailableSemaphores[i]);
+		vkDevice.destroyFence(inFlightFences[i]);
 	}
 	vkb::destroy_device(vkbDevice);
-	vkDestroySurfaceKHR(vkInstance, surface, nullptr);
+	vkInstance.destroySurfaceKHR(surface);
 	vkb::destroy_instance(vkbInstance);
 	renderer.clean();
 	std::println("clean");
