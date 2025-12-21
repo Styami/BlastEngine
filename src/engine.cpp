@@ -1,9 +1,8 @@
 #include "engine.hpp"
+#include "buffer.hpp"
 #include "shaderCompiler.hpp"
 #include <ranges>
 #include <print>
-#include <vulkan/vulkan_enums.hpp>
-#include <vulkan/vulkan_structs.hpp>
 
 
 Engine::Engine()
@@ -288,65 +287,6 @@ void Engine::createCommandPool() {
 	commandPool = vkDevice.createCommandPool(commandPoolCreateInfo);
 }
 
-uint32_t Engine::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
-	vk::PhysicalDeviceMemoryProperties memProp;
-	memProp = vkPhysicalDevice.getMemoryProperties();
-
-	for (uint32_t i = 0; i < memProp.memoryTypeCount; i++) {
-		// This bitwise operation permits to know if the property flag can be OK for our properties
-		// Then the equality permits to verify that the selected flag satisfy ALL our properties. 
-		if ((typeFilter & (1 << i)) && (memProp.memoryTypes[i].propertyFlags & properties) == properties) {
-			return i;
-		}
-	}
-	throw std::runtime_error("Failed to find a correct memory type!");
-}
-
-std::tuple<vk::Buffer, vk::DeviceMemory> Engine::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::SharingMode sharingMode) {
-		vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo(
-		{},
-		size,
-		usage,
-		sharingMode
-	);
-	vk::Buffer buffer = vkDevice.createBuffer(bufferInfo);
-
-	vk::MemoryRequirements memoryRequirements = vkDevice.getBufferMemoryRequirements(buffer);
-	vk::MemoryAllocateInfo memoryAllocateInfo = vk::MemoryAllocateInfo(
-		memoryRequirements.size,
-		findMemoryType(memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
-	);
-	
-	vk::DeviceMemory bufferMemory = vkDevice.allocateMemory(memoryAllocateInfo);
-	vkDevice.bindBufferMemory(buffer, bufferMemory, 0);
-	return {buffer, bufferMemory};
-}
-
-void Engine::copyBuffer(vk::Buffer stagingBuffer, vk::Buffer buffer, vk::DeviceSize size) {
-	vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo(
-		commandPool,
-		vk::CommandBufferLevel::ePrimary,
-		1
-	);
-	vk::CommandBuffer transferCommandBuffer = vkDevice.allocateCommandBuffers(commandBufferInfo).front();
-
-	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo(
-		vk::CommandBufferUsageFlagBits::eOneTimeSubmit
-	);
-	transferCommandBuffer.begin(beginInfo);
-	transferCommandBuffer.copyBuffer(stagingBuffer, buffer, vk::BufferCopy(0, 0, size));
-	transferCommandBuffer.end();
-	graphicsQueue.submit(vk::SubmitInfo(
-		{},
-		{},
-		{},
-		1,
-		&transferCommandBuffer
-	));
-	graphicsQueue.waitIdle();
-	vkDevice.freeCommandBuffers(commandPool, transferCommandBuffer);
-}
-
 void Engine::createVertexBuffer() {
 	loadObjects(); // temporary. IT HAS TO BE CHANGE IN FUTURE!!!!!!!
 	std::vector<Vertex> verticesToRender;
@@ -356,16 +296,13 @@ void Engine::createVertexBuffer() {
 		});
 	}
 	vk::DeviceSize bufferSize = sizeof(Vertex) * verticesToRender.size();
+	be::Buffer stagingVbo = be::Buffer(vkDevice, bufferSize);
+	stagingVbo.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
+	stagingVbo.map(verticesToRender);
 
-	auto [stagingVbo, stagingVboMemory] = createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive);	
-	void* data = vkDevice.mapMemory(stagingVboMemory, 0, bufferSize);
-	memcpy(data, verticesToRender.data(), sizeof(Vertex) * verticesToRender.size());
-	vkDevice.unmapMemory(stagingVboMemory);
-
-	std::tie(vbo, vboMemory) = createBuffer(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::SharingMode::eExclusive);
-	copyBuffer(stagingVbo, vbo, bufferSize);
-	vkDevice.destroyBuffer(stagingVbo);
-	vkDevice.freeMemory(stagingVboMemory);
+	vbo = be::Buffer(vkDevice, bufferSize);
+	vbo.create(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
+	vbo.copyBuffer(stagingVbo, commandPool, graphicsQueue);
 }
 
 void Engine::createCommandBuffers() {
@@ -442,7 +379,7 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 	commandBuffer.beginRendering(renderingInfo);
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 	VkDeviceSize offests[] = {0};
-	commandBuffer.bindVertexBuffers(0, 1, &vbo, offests);
+	commandBuffer.bindVertexBuffers(0, 1, &vbo.getBuffer(), offests);
 
 	vk::Viewport viewport = vk::Viewport(
 		0,
@@ -568,7 +505,7 @@ void Engine::initVulkan() {
 
 void Engine::mainLoop() {
 	while (engineRunning) {
-		engineRunning = !renderer.loop();
+		engineRunning = renderer.loop();
 		drawFrame();
 	}
 	vkDevice.waitIdle();
@@ -584,9 +521,8 @@ void Engine::cleanUpSwapChain() {
 void Engine::cleanUp() {
 	cleanUpSwapChain();
 	vkDestroyPipelineLayout(vkbDevice.device, pipelineLayout, nullptr);
+	vbo.clean();
 	vkDestroyPipeline(vkbDevice.device, graphicsPipeline, nullptr);
-	vkDestroyBuffer(vkbDevice.device, vbo, nullptr);
-	vkFreeMemory(vkbDevice.device, vboMemory, nullptr);
 	vkDestroyCommandPool(vkbDevice.device, commandPool, nullptr);
 	for(size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) { 
 		vkDestroySemaphore(vkbDevice.device, renderFinishedSemaphores[i], nullptr);

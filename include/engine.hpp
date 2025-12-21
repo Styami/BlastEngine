@@ -4,10 +4,10 @@
 #include <tuple>
 #include <vulkan/vulkan.hpp>
 #include <filesystem>
-#include <vulkan/vulkan_handles.hpp>
 #include "VkBootstrap.h"
 #include "window.hpp"
 #include "object.hpp"
+#include "buffer.hpp"
 
 const int MAX_FRAME_IN_FLIGHT = 2;
 class Engine
@@ -71,12 +71,6 @@ class Engine
 
 		void createVertexBuffer();
 
-		uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
-
-		std::tuple<vk::Buffer, vk::DeviceMemory> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::SharingMode sharingMode);
-
-		void copyBuffer(vk::Buffer stagingBuffer, vk::Buffer buffer, vk::DeviceSize siz);
-
 		void loadObjects();
 
 		vkb::Instance vkbInstance;
@@ -104,8 +98,8 @@ class Engine
 		std::array<vk::Semaphore, MAX_FRAME_IN_FLIGHT> renderFinishedSemaphores;
 		std::array<vk::Fence, MAX_FRAME_IN_FLIGHT> inFlightFences;
 		std::vector<Object> objects;
-		vk::Buffer vbo;
-		vk::DeviceMemory vboMemory;
+		be::Buffer vbo;
+		
 
 		bool engineRunning = true;
 		uint32_t currentFrame = 0;
