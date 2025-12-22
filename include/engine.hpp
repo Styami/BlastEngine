@@ -70,6 +70,8 @@ class Engine
 
 		void createVertexBuffer();
 
+		void createIndexBuffer();
+
 		void loadObjects();
 
 		vkb::Instance vkbInstance;
@@ -98,6 +100,7 @@ class Engine
 		std::array<vk::Fence, MAX_FRAME_IN_FLIGHT> inFlightFences;
 		std::vector<Object> objects;
 		be::Buffer vbo;
+		be::Buffer ibo;
 		
 
 		bool engineRunning = true;

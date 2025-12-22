@@ -68,11 +68,25 @@ void be::Buffer::create(vk::BufferUsageFlags usage, vk::SharingMode sharingMode,
     m_device.bindBufferMemory(m_buffer, m_memory, 0);
 }
 
+template<typename T>
+void be::Buffer::map(const std::vector<T>&) {
+    
+}
+
+template<>
 void be::Buffer::map(const std::vector<Vertex>& vertices) {
     void* data = m_device.mapMemory(m_memory, 0, m_size);
     memcpy(data, vertices.data(), m_size);
     m_device.unmapMemory(m_memory);
 }
+
+template<>
+void be::Buffer::map(const std::vector<int>& indices) {
+    void* data = m_device.mapMemory(m_memory, 0, m_size);
+    memcpy(data, indices.data(), m_size);
+    m_device.unmapMemory(m_memory);
+}
+
 
 void be::Buffer::copyBuffer(be::Buffer& stagingBuffer, vk::CommandPool commandPool, vk::Queue graphicsQueue) {
 	vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo(

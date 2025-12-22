@@ -295,14 +295,33 @@ void Engine::createVertexBuffer() {
 			verticesToRender.push_back(v);
 		});
 	}
-	vk::DeviceSize bufferSize = sizeof(Vertex) * verticesToRender.size();
-	be::Buffer stagingVbo = be::Buffer(vkDevice, bufferSize);
-	stagingVbo.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
-	stagingVbo.map(verticesToRender);
+	vk::DeviceSize vboSize = sizeof(Vertex) * verticesToRender.size();
+	be::Buffer stagingBuffer = be::Buffer(vkDevice, vboSize);
+	stagingBuffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
+	stagingBuffer.map(verticesToRender);
 
-	vbo = be::Buffer(vkDevice, bufferSize);
+	vbo = be::Buffer(vkDevice, vboSize);
 	vbo.create(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
-	vbo.copyBuffer(stagingVbo, commandPool, graphicsQueue);
+	vbo.copyBuffer(stagingBuffer, commandPool, graphicsQueue);
+
+
+}
+
+void Engine::createIndexBuffer() {
+	std::vector<int> indicesOfVertices;
+	for (Object object : objects) {
+		std::ranges::for_each(object.getIndices(), [&indicesOfVertices](const int i) {
+			indicesOfVertices.push_back(i);
+		});
+	}
+	vk::DeviceSize iboSize = sizeof(int) * indicesOfVertices.size();
+	be::Buffer stagingBuffer = be::Buffer(vkDevice, iboSize);
+	stagingBuffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
+	stagingBuffer.map(indicesOfVertices);
+
+	ibo = be::Buffer(vkDevice, iboSize);
+	ibo.create(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
+	ibo.copyBuffer(stagingBuffer, commandPool, graphicsQueue);
 }
 
 void Engine::createCommandBuffers() {
@@ -380,6 +399,7 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 	VkDeviceSize offests[] = {0};
 	commandBuffer.bindVertexBuffers(0, 1, &vbo.getBuffer(), offests);
+	commandBuffer.bindIndexBuffer(ibo.getBuffer(), 0, vk::IndexType::eUint32);
 
 	vk::Viewport viewport = vk::Viewport(
 		0,
@@ -397,7 +417,7 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 	);
 	commandBuffer.setScissor(0, 1, &scissor);
 
-	commandBuffer.draw(3, 1, 0, 0);
+	commandBuffer.drawIndexed(6, 1, 0, 0, 0);
 	commandBuffer.endRendering();
 	transition_image_layout(
 		commandBuffer,
@@ -498,6 +518,7 @@ void Engine::initVulkan() {
 	createGraphicPipeline();
 	createCommandPool();
 	createVertexBuffer();
+	createIndexBuffer();
 	createCommandBuffers();
 	createSyncObjects();
 }
@@ -522,6 +543,7 @@ void Engine::cleanUp() {
 	cleanUpSwapChain();
 	vkDevice.destroyPipelineLayout(pipelineLayout);
 	vbo.clean();
+	ibo.clean();
 	vkDevice.destroyPipeline(graphicsPipeline);
 	vkDevice.destroyCommandPool(commandPool);
 	for(size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) { 

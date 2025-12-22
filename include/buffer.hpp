@@ -21,7 +21,8 @@ namespace be {
             be::Buffer& operator=(const Buffer& another);
             void clean();
             void create(vk::BufferUsageFlags usage, vk::SharingMode sharingMode, vk::PhysicalDevice physicalDevice);
-            void map(const std::vector<Vertex>& vertices);
+            template<typename T>
+            void map(const std::vector<T>& vertices);
             void copyBuffer(be::Buffer& stagingBuffer, vk::CommandPool commandPool, vk::Queue graphicsQueue);
             const vk::Buffer& getBuffer(); 
     };
