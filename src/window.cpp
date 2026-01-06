@@ -1,10 +1,50 @@
 #include "window.hpp"
-#include <GLFW/glfw3.h>
+#include <cstddef>
 #include <print>
+
+Window::Window(const Window& another) :
+	window(another.window),
+	framebufferResized(another.framebufferResized)
+{}
+
+Window::Window(Window&& another) :
+	window(another.window),
+	framebufferResized(another.framebufferResized)
+{
+	if (another != *this) {
+		glfwDestroyWindow(window);
+		window = another.window;
+		another.window = nullptr;
+		framebufferResized = another.framebufferResized;
+		another.framebufferResized = false;
+	}
+
+}
+
+bool Window::operator==(const Window& another) {
+	return window == another.window && framebufferResized == another.framebufferResized;
+}
+
+bool Window::operator!=(const Window& another) {
+	return !(*this == another);
+}
+
+Window& Window::operator=(const Window& another) {
+	window = another.window;
+	framebufferResized = another.framebufferResized;
+
+	return *this;
+}
+
+Window& Window::operator=(Window&& another) {
+	window = std::move(another.window);
+	framebufferResized = std::move(another.framebufferResized);
+
+	return *this;
+}
 
 Window::Window() :
 	window(nullptr),
-	isClosed(false),
 	framebufferResized(false)
 {
 	glfwInit();
@@ -39,23 +79,10 @@ const char** Window::getExtensions(unsigned int& extensionCount) {
 	return glfwGetRequiredInstanceExtensions(&extensionCount);
 }
 
-void Window::inputCallBack(GLFWwindow* window, int key, int, int action, int) {
-	Window* renderer = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
-	if(action == GLFW_PRESS) {
-		switch (key) {
-			case GLFW_KEY_ESCAPE:
-				renderer->isClosed = true;
-				break;
-			default:
-				break;
-		}
-	}
-}
 
 bool Window::loop() {
 	glfwPollEvents();
-	glfwSetKeyCallback(window, inputCallBack);
-	return !(isClosed || glfwWindowShouldClose(window));
+	return !glfwWindowShouldClose(window);
 }
 
 void Window::clean() {
@@ -74,4 +101,8 @@ void Window::createSurface(const VkInstance& instance, VkSurfaceKHR* surface) {
 
 void Window::getFrameBufferSize(int& width, int& height) {
 	glfwGetFramebufferSize(window, &width, &height);
+}
+
+GLFWwindow* Window::getWindow() const {
+	return window;
 }

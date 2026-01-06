@@ -6,14 +6,7 @@
 
 
 namespace be {
-    class Buffer {
-        private:
-            uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties, vk::PhysicalDevice physicalDevice);
-            vk::Buffer m_buffer;
-            vk::Device m_device;
-            vk::DeviceSize m_size;
-            vk::DeviceMemory m_memory;
-
+    class Buffer {        
         public:
             Buffer();
             Buffer(vk::Device device, vk::DeviceSize size);
@@ -25,6 +18,13 @@ namespace be {
             void map(const std::vector<T>& vertices);
             void copyBuffer(be::Buffer& stagingBuffer, vk::CommandPool commandPool, vk::Queue graphicsQueue);
             const vk::Buffer& getBuffer(); 
+
+        private:
+            uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties, vk::PhysicalDevice physicalDevice);
+            vk::Buffer m_buffer;
+            vk::Device m_device;
+            vk::DeviceSize m_size;
+            vk::DeviceMemory m_memory;
     };
 }
 

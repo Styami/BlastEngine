@@ -1,12 +1,12 @@
-#ifndef OBJECT_HPP
-#define OBJECT_HPP
+#ifndef MESHOBJECT_HPP
+#define MESHOBJECT_HPP
 
 #include "vertex.hpp"
 #include <vector>
 
-class Object {
+class MeshObject {
     public:
-        Object();
+        MeshObject();
         const std::vector<Vertex>& getVertices();
         const std::vector<int>& getIndices();
         const glm::mat4& getModel(); 

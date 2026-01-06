@@ -4,6 +4,9 @@ target_sources(BlastEngine PUBLIC
 	app.hpp
 	shaderCompiler.hpp
 	vertex.hpp
-	object.hpp
+	meshObject.hpp
 	buffer.hpp
+	inputHandler.hpp
+	camera.hpp
+	descriptor.hpp
 )

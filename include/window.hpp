@@ -13,6 +13,12 @@ const uint16_t HEIGHT_2K = 1440;
 
 class Window {
 	public:
+		Window(const Window& another);
+		Window(Window&& another);
+		Window& operator=(const Window& another);
+		Window& operator=(Window&& another);
+		bool operator==(const Window& another);
+		bool operator!=(const Window& another);
 		Window();
 		void init(const std::string& title);
 		bool loop();
@@ -24,12 +30,11 @@ class Window {
 		bool hasFrameBufferResized() const;
 		void resetFrameBufferResized();
 		void waitEvents();
+		GLFWwindow* getWindow() const;
 		
-		private:
-		static void inputCallBack(GLFWwindow* window, int key, int scanCode, int action, int mods);
+	private:
 		static void frameBufferResizeCallback(GLFWwindow* window, int width, int height);
 		GLFWwindow* window;
-		bool isClosed;
 		bool framebufferResized;
 };
 

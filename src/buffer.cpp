@@ -87,6 +87,12 @@ void be::Buffer::map(const std::vector<int>& indices) {
     m_device.unmapMemory(m_memory);
 }
 
+template<>
+void be::Buffer::map(const std::vector<glm::mat4>&) {
+	[[maybe_unused]]
+    void* data = m_device.mapMemory(m_memory, 0, m_size);
+}
+
 
 void be::Buffer::copyBuffer(be::Buffer& stagingBuffer, vk::CommandPool commandPool, vk::Queue graphicsQueue) {
 	vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo(

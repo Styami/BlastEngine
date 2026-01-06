@@ -4,8 +4,10 @@
 #include <vulkan/vulkan.hpp>
 #include <filesystem>
 #include "VkBootstrap.h"
+#include "camera.hpp"
+#include "descriptor.hpp"
 #include "window.hpp"
-#include "object.hpp"
+#include "meshObject.hpp"
 #include "buffer.hpp"
 
 const int MAX_FRAME_IN_FLIGHT = 2;
@@ -13,22 +15,23 @@ class Engine
 {
 	public:
 
-		Engine();
+		Engine(const Window& renderer, Camera& camera);
 
 		void initVulkan();
 
-		void drawFrame();
+		void drawFrame(double dt);
 
 		void run();
+
+		void cleanUp();
+
+		void setRenderer(const Window& window);
+
 
 	private:
 
 		void createInstance();
-
-		void mainLoop();
-
-		void cleanUp();
-
+		
 		void getPhysicalDevice();
 
 		void getQueueFamilies();
@@ -72,6 +75,14 @@ class Engine
 
 		void createIndexBuffer();
 
+		void createDescriptorPool();
+
+		void createDescriptorSetLayout();
+
+		void createDescriptorSets();
+
+		void updateUniformBuffer(uint32_t image);
+
 		void loadObjects();
 
 		vkb::Instance vkbInstance;
@@ -98,9 +109,12 @@ class Engine
 		std::array<vk::Semaphore, MAX_FRAME_IN_FLIGHT> imageAvailableSemaphores;
 		std::array<vk::Semaphore, MAX_FRAME_IN_FLIGHT> renderFinishedSemaphores;
 		std::array<vk::Fence, MAX_FRAME_IN_FLIGHT> inFlightFences;
-		std::vector<Object> objects;
+		std::vector<MeshObject> objects;
 		be::Buffer vbo;
 		be::Buffer ibo;
+		be::Descriptor ubo;
+		vk::DescriptorPool descriptorPool;
+		Camera* camera;
 		
 
 		bool engineRunning = true;
@@ -110,7 +124,9 @@ class Engine
 			vk::KHRSwapchainExtensionName,
 			vk::KHRSpirv14ExtensionName,
 			vk::KHRSynchronization2ExtensionName,
-			vk::KHRCreateRenderpass2ExtensionName
+			vk::KHRCreateRenderpass2ExtensionName,
+			vk::EXTGraphicsPipelineLibraryExtensionName,
+			vk::KHRPipelineLibraryExtensionName
 		};
 };
 

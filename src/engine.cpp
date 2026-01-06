@@ -1,11 +1,12 @@
 #include "engine.hpp"
-#include "buffer.hpp"
 #include "shaderCompiler.hpp"
 #include <ranges>
 #include <print>
 
 
-Engine::Engine()
+Engine::Engine(const Window& renderer, Camera& camera) :
+	renderer(renderer),
+	camera(&camera)
 {
 	std::println("Construct Engine.");
 }
@@ -93,6 +94,7 @@ void Engine::createSwapChain() {
 	vkbSwapChain = scBuilderRet.value();
 	vkSwapChain = vkbSwapChain.swapchain;
 	swapChainExtent = vkbSwapChain.extent;
+	camera->setAspect(swapChainExtent.width / swapChainExtent.height);
 	swapChainImageFormat = vk::Format(vkbSwapChain.image_format);
 	swapChainImages = vkbSwapChain.get_images().value() | std::views::transform([](const VkImage& image) {
 		return vk::Image(image);
@@ -115,6 +117,7 @@ void Engine::recreateSwapChain() {
 	{
 		renderer.waitEvents();
 		renderer.getFrameBufferSize(width, height);
+		camera->setAspect(static_cast<float>(width) / static_cast<float>(height));
 	}
 	
 	createSwapChain();
@@ -234,8 +237,8 @@ void Engine::createGraphicPipeline() {
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo(
 		{},
-		0,
-		{},
+		1,
+		ubo.getLayouts().data(),
 		0
 	);
 	
@@ -273,9 +276,25 @@ void Engine::createGraphicPipeline() {
 	vkDestroyShaderModule(vkbDevice.device, shaderModule, nullptr);
 }
 
+void Engine::createDescriptorSetLayout() {
+	ubo = be::Descriptor(vkDevice, MAX_FRAME_IN_FLIGHT);
+	ubo.setDeviceSize(sizeof(glm::mat4))
+		.setType(vk::DescriptorType::eUniformBuffer)
+		.setPhysicalDevice(vkPhysicalDevice)
+		.setShaderStage(vk::ShaderStageFlagBits::eVertex)
+		.setSharingMode(vk::SharingMode::eExclusive)
+		.setUsage(vk::BufferUsageFlagBits::eUniformBuffer);
+	ubo.build();
+	ubo.map();
+}
+
+void Engine::createDescriptorSets() {
+	ubo.allocate(descriptorPool);
+}
+
 
 void Engine::loadObjects() {
-	objects.push_back(Object());
+	objects.push_back(MeshObject());
 }
 
 void Engine::createCommandPool() {
@@ -287,10 +306,25 @@ void Engine::createCommandPool() {
 	commandPool = vkDevice.createCommandPool(commandPoolCreateInfo);
 }
 
+void Engine::createDescriptorPool() {
+	vk::DescriptorPoolSize poolSize = vk::DescriptorPoolSize(
+		vk::DescriptorType::eUniformBuffer,
+		MAX_FRAME_IN_FLIGHT
+	);
+	vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo = vk::DescriptorPoolCreateInfo(
+		{},
+		MAX_FRAME_IN_FLIGHT,
+		1,
+		&poolSize
+	);
+	descriptorPool = vkDevice.createDescriptorPool(descriptorPoolCreateInfo);
+
+}
+
 void Engine::createVertexBuffer() {
 	loadObjects(); // temporary. IT HAS TO BE CHANGE IN FUTURE!!!!!!!
 	std::vector<Vertex> verticesToRender;
-	for (Object object : objects) {
+	for (MeshObject object : objects) {
 		std::ranges::for_each(object.getVertices(), [&verticesToRender](const Vertex& v) {
 			verticesToRender.push_back(v);
 		});
@@ -309,7 +343,7 @@ void Engine::createVertexBuffer() {
 
 void Engine::createIndexBuffer() {
 	std::vector<int> indicesOfVertices;
-	for (Object object : objects) {
+	for (MeshObject object : objects) {
 		std::ranges::for_each(object.getIndices(), [&indicesOfVertices](const int i) {
 			indicesOfVertices.push_back(i);
 		});
@@ -400,6 +434,7 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 	VkDeviceSize offests[] = {0};
 	commandBuffer.bindVertexBuffers(0, 1, &vbo.getBuffer(), offests);
 	commandBuffer.bindIndexBuffer(ibo.getBuffer(), 0, vk::IndexType::eUint32);
+	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, ubo.getSets()[imageIndex], {});
 
 	vk::Viewport viewport = vk::Viewport(
 		0,
@@ -441,7 +476,13 @@ void Engine::createSyncObjects() {
 	}
 }
 
-void Engine::drawFrame() {
+void Engine::updateUniformBuffer(uint32_t image) {
+	glm::mat4 vp = camera->getProj() * camera->getView();
+	std::vector dataToUpdate = {vp};
+	ubo.update<glm::mat4>(dataToUpdate, image);
+}
+
+void Engine::drawFrame(double ) {
 	// Setup fence
 	while(vkDevice.waitForFences(1, &inFlightFences[currentFrame], vk::True, UINT64_MAX) == vk::Result::eTimeout)
 		;
@@ -469,6 +510,7 @@ void Engine::drawFrame() {
 	commandBuffers[currentFrame].reset();
 	recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
+	updateUniformBuffer(currentFrame);
 	vk::PipelineStageFlags waitDstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	// Submitting command buffer
 	vk::SubmitInfo submitInfo = vk::SubmitInfo(
@@ -506,8 +548,11 @@ void Engine::drawFrame() {
 	currentFrame = (currentFrame + 1) % MAX_FRAME_IN_FLIGHT;
 }
 
+void Engine::setRenderer(const Window& window) {
+	renderer = window;
+}
+
 void Engine::initVulkan() {
-	renderer.init("Blast Engine");
 	createInstance();
 	createSurface();
 	getPhysicalDevice();
@@ -515,21 +560,15 @@ void Engine::initVulkan() {
 	getQueueFamilies();
 	createSwapChain();
 	createImageViews();
+	createDescriptorPool();
+	createDescriptorSetLayout();
+	createDescriptorSets();
 	createGraphicPipeline();
 	createCommandPool();
 	createVertexBuffer();
 	createIndexBuffer();
 	createCommandBuffers();
 	createSyncObjects();
-}
-
-
-void Engine::mainLoop() {
-	while (engineRunning) {
-		engineRunning = renderer.loop();
-		drawFrame();
-	}
-	vkDevice.waitIdle();
 }
 
 void Engine::cleanUpSwapChain() {
@@ -540,10 +579,13 @@ void Engine::cleanUpSwapChain() {
 }
 
 void Engine::cleanUp() {
+	vkDevice.waitIdle();
 	cleanUpSwapChain();
 	vkDevice.destroyPipelineLayout(pipelineLayout);
 	vbo.clean();
 	ibo.clean();
+	ubo.clean(descriptorPool);
+	vkDevice.destroyDescriptorPool(descriptorPool);
 	vkDevice.destroyPipeline(graphicsPipeline);
 	vkDevice.destroyCommandPool(commandPool);
 	for(size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) { 
@@ -554,12 +596,7 @@ void Engine::cleanUp() {
 	vkb::destroy_device(vkbDevice);
 	vkInstance.destroySurfaceKHR(surface);
 	vkb::destroy_instance(vkbInstance);
-	renderer.clean();
 	std::println("clean");
 }
 
-void Engine::run() {
-	mainLoop();
-	cleanUp();
-	std::println("Test run.");
-}
+void Engine::run() {}
