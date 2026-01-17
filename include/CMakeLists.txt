@@ -5,8 +5,10 @@ target_sources(BlastEngine PUBLIC
 	shaderCompiler.hpp
 	vertex.hpp
 	meshObject.hpp
+	utils.hpp
 	buffer.hpp
 	inputHandler.hpp
 	camera.hpp
 	descriptor.hpp
+	texture.hpp
 )

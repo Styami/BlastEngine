@@ -30,7 +30,10 @@ add_subdirectory(include)
 add_subdirectory(src)
 add_subdirectory(ext/vk-bootstrap)
 
-target_include_directories(BlastEngine PRIVATE include)
+target_include_directories(BlastEngine PRIVATE
+	include
+	ext/stb
+)
 target_link_libraries(BlastEngine PRIVATE 
 	glfw
 	Vulkan::Vulkan
@@ -38,45 +41,3 @@ target_link_libraries(BlastEngine PRIVATE
 	slang::slang
 	glm::glm
 )
-
-### SHADER PART ###
-#based on this CMAKE video https://www.youtube.com/watch?v=ZuHK_5cJ6B8&t=217s
-
-find_program(SLANG_COMPILATOR slangc)
-find_program(GLSL_COMPILATOR glslc)
-
-file(GLOB_RECURSE SLANG_SOURCE_FILES
-  "${PROJECT_SOURCE_DIR}/shaders/*.slang"
-)
- 
-foreach(SLANG ${SLANG_SOURCE_FILES})
-	get_filename_component(FILE_NAME ${SLANG} NAME_WLE)
-	set(SHADER_PATH "${PROJECT_SOURCE_DIR}/shaders/${FILE_NAME}")
-	if(${FILE_NAME} MATCHES Module$)
-		set(BINARY_FILE "${SHADER_PATH}.slang-module")
-		add_custom_command(
-			OUTPUT ${BINARY_FILE}
-			COMMAND ${SLANG_COMPILATOR} ${SLANG} -o ${BINARY_FILE}
-			DEPENDS ${SLANG})
-			list(APPEND MODULE_FILES ${BINARY_FILE})
-	else()
-		set(ENTRY_POINT -entry fragmentMain -entry vertexMain)
-		set(BINARY_FILE "${SHADER_PATH}.spv")
-		add_custom_command(
-  		OUTPUT ${BINARY_FILE}  
-			COMMAND ${SLANG_COMPILATOR} ${SLANG} -target spirv -profile spirv_1_4 ${ENTRY_POINT} -o ${BINARY_FILE}
-			DEPENDS ${SLANG}
-			VERBATIM)
-			list(APPEND SHADER_FILES ${BINARY_FILE})
-	endif()
-endforeach(SLANG)
-
-# add_custom_target(
-# 	Shaders
-# 	DEPENDS ${MODULE_FILES} 
-# 	DEPENDS ${SHADER_FILES}
-# )
-
-#add_dependencies(BlastEngine 
-	#Shaders
-#)

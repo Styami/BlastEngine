@@ -2,10 +2,10 @@
 #define ENGINE_HPP
 
 #include <vulkan/vulkan.hpp>
-#include <filesystem>
 #include "VkBootstrap.h"
 #include "camera.hpp"
 #include "descriptor.hpp"
+#include "texture.hpp"
 #include "window.hpp"
 #include "meshObject.hpp"
 #include "buffer.hpp"
@@ -85,6 +85,9 @@ class Engine
 
 		void loadObjects();
 
+		void loadTextures();
+
+		
 		vkb::Instance vkbInstance;
 		vk::Instance vkInstance;
 		vkb::PhysicalDevice vkbPhysicalDevice;
@@ -113,6 +116,7 @@ class Engine
 		be::Buffer vbo;
 		be::Buffer ibo;
 		be::Descriptor ubo;
+		std::vector<be::Texture> textures;
 		vk::DescriptorPool descriptorPool;
 		Camera* camera;
 		

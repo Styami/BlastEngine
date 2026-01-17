@@ -1,5 +1,6 @@
 #include "engine.hpp"
 #include "shaderCompiler.hpp"
+#include "texture.hpp"
 #include <ranges>
 #include <print>
 
@@ -51,11 +52,15 @@ void Engine::getPhysicalDevice() {
 													.setDynamicRendering(vk::True)
 													.setSynchronization2(vk::True);
 
+	vk::PhysicalDeviceFeatures2 features2 = vk::PhysicalDeviceFeatures2()
+											.setFeatures(vk::PhysicalDeviceFeatures().setSamplerAnisotropy(vk::True));
+
 	// take in account all required extension that the device has to support
 	std::ranges::for_each(deviceExtensions, [&selector](const char* c) {
 		selector.add_required_extension(c);
 	});
 	auto selectedDevice = selector.set_required_features_13(features13)
+													.set_required_features(features2.features)
 													.select();
 	if(!selectedDevice) {
 		throw std::runtime_error("Failed to find a physical device.");
@@ -297,6 +302,30 @@ void Engine::loadObjects() {
 	objects.push_back(MeshObject());
 }
 
+void Engine::loadTextures() {
+	be::Texture::setDevice(vkDevice);
+	be::Texture::setPhysicalDevice(vkPhysicalDevice);
+	be::Texture::createTextureSampler();
+	std::filesystem::path imagePath = std::filesystem::current_path()/"data"/"textures";
+	textures.push_back(be::Texture(imagePath / "FFXIV_Endwalker.jpg", graphicsQueue));
+	for (be::Texture& texture : textures) {
+		texture.createImage(vk::ImageType::e2D,
+							vk::Format::eR8G8B8A8Srgb,
+							1,
+							1,
+							vk::SampleCountFlagBits::e1,
+							vk::ImageTiling::eOptimal,
+							vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+							vk::SharingMode::eExclusive,
+							vk::MemoryPropertyFlagBits::eDeviceLocal
+		);
+		texture.transitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, commandPool);
+		texture.copyBufferToImage(commandPool);
+		texture.transitionImageLayout(vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, commandPool);
+
+	}
+}
+
 void Engine::createCommandPool() {
 	vk::CommandPoolCreateInfo commandPoolCreateInfo = vk::CommandPoolCreateInfo(
 		vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
@@ -332,7 +361,7 @@ void Engine::createVertexBuffer() {
 	vk::DeviceSize vboSize = sizeof(Vertex) * verticesToRender.size();
 	be::Buffer stagingBuffer = be::Buffer(vkDevice, vboSize);
 	stagingBuffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
-	stagingBuffer.map(verticesToRender);
+	stagingBuffer.map<Vertex>(verticesToRender);
 
 	vbo = be::Buffer(vkDevice, vboSize);
 	vbo.create(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
@@ -351,7 +380,7 @@ void Engine::createIndexBuffer() {
 	vk::DeviceSize iboSize = sizeof(int) * indicesOfVertices.size();
 	be::Buffer stagingBuffer = be::Buffer(vkDevice, iboSize);
 	stagingBuffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
-	stagingBuffer.map(indicesOfVertices);
+	stagingBuffer.map<int>(indicesOfVertices);
 
 	ibo = be::Buffer(vkDevice, iboSize);
 	ibo.create(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
@@ -567,6 +596,7 @@ void Engine::initVulkan() {
 	createCommandPool();
 	createVertexBuffer();
 	createIndexBuffer();
+	loadTextures();
 	createCommandBuffers();
 	createSyncObjects();
 }
@@ -585,6 +615,9 @@ void Engine::cleanUp() {
 	vbo.clean();
 	ibo.clean();
 	ubo.clean(descriptorPool);
+	for(be::Texture& texture : textures)
+		texture.clean();
+	be::Texture::cleanSampler();
 	vkDevice.destroyDescriptorPool(descriptorPool);
 	vkDevice.destroyPipeline(graphicsPipeline);
 	vkDevice.destroyCommandPool(commandPool);

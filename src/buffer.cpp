@@ -1,4 +1,5 @@
 #include "buffer.hpp"
+#include "utils.hpp"
 
 be::Buffer::Buffer() :
     m_buffer(nullptr),
@@ -21,6 +22,18 @@ be::Buffer::Buffer(const Buffer& another) :
     m_memory(another.m_memory)
 {}
 
+be::Buffer::Buffer(Buffer&& another) :
+    m_buffer(std::move(another.m_buffer)),
+    m_device(std::move(another.m_device)),
+    m_size(std::move(another.m_size)),
+    m_memory(std::move(another.m_memory))
+{
+	another.m_buffer = VK_NULL_HANDLE;
+	another.m_device = VK_NULL_HANDLE;
+	another.m_size = 0;
+	another.m_memory = VK_NULL_HANDLE;
+}
+
 be::Buffer& be::Buffer::operator=(const Buffer& another) {
     if (m_buffer != nullptr) {
         m_device.destroyBuffer(m_buffer);
@@ -35,20 +48,30 @@ be::Buffer& be::Buffer::operator=(const Buffer& another) {
     return *this;
 }
 
-uint32_t be::Buffer::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties, vk::PhysicalDevice physicalDevice) {
-    vk::PhysicalDeviceMemoryProperties memProp;
-	memProp = physicalDevice.getMemoryProperties();
-
-	for (uint32_t i = 0; i < memProp.memoryTypeCount; i++) {
-		// This bitwise operation permits to know if the property flag can be OK for our properties
-		// Then the equality permits to verify that the selected flag satisfy ALL our properties. 
-		if ((typeFilter & (1 << i)) && (memProp.memoryTypes[i].propertyFlags & properties) == properties) {
-			return i;
-		}
-	}
-	throw std::runtime_error("Failed to find a correct memory type!");
+be::Buffer& be::Buffer::operator=(Buffer&& another) {
+    if (*this != another) {
+		m_buffer = another.m_buffer;
+		another.m_buffer = VK_NULL_HANDLE;
+		m_device = another.m_device;
+		another.m_device = VK_NULL_HANDLE;
+		m_size = another.m_size;
+		another.m_size = 0;
+		m_memory = another.m_memory;
+		another.m_memory = VK_NULL_HANDLE;
+    }
+    return *this;
 }
 
+bool be::Buffer::operator==(const Buffer& another) const {
+	return m_buffer == another.m_buffer
+			&& m_device == another.m_device
+			&& m_size == another.m_size
+			&& m_memory == another.m_memory;
+}
+
+bool be::Buffer::operator!=(const Buffer& another) const {
+	return !(*this == another);
+}
 void be::Buffer::create(vk::BufferUsageFlags usage, vk::SharingMode sharingMode, vk::PhysicalDevice physicalDevice) {
     vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo(
 		{},
@@ -67,32 +90,6 @@ void be::Buffer::create(vk::BufferUsageFlags usage, vk::SharingMode sharingMode,
 	m_memory = m_device.allocateMemory(memoryAllocateInfo);
     m_device.bindBufferMemory(m_buffer, m_memory, 0);
 }
-
-template<typename T>
-void be::Buffer::map(const std::vector<T>&) {
-    
-}
-
-template<>
-void be::Buffer::map(const std::vector<Vertex>& vertices) {
-    void* data = m_device.mapMemory(m_memory, 0, m_size);
-    memcpy(data, vertices.data(), m_size);
-    m_device.unmapMemory(m_memory);
-}
-
-template<>
-void be::Buffer::map(const std::vector<int>& indices) {
-    void* data = m_device.mapMemory(m_memory, 0, m_size);
-    memcpy(data, indices.data(), m_size);
-    m_device.unmapMemory(m_memory);
-}
-
-template<>
-void be::Buffer::map(const std::vector<glm::mat4>&) {
-	[[maybe_unused]]
-    void* data = m_device.mapMemory(m_memory, 0, m_size);
-}
-
 
 void be::Buffer::copyBuffer(be::Buffer& stagingBuffer, vk::CommandPool commandPool, vk::Queue graphicsQueue) {
 	vk::CommandBufferAllocateInfo commandBufferInfo = vk::CommandBufferAllocateInfo(

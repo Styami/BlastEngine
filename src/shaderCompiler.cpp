@@ -1,8 +1,6 @@
 #include <array>
 #include <iostream>
 #include <print>
-#include <ranges>
-#include <bit>
 #include "shaderCompiler.hpp"
 
 ShaderCompiler::ShaderCompiler() {
