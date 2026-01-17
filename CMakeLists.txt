@@ -16,18 +16,19 @@ else()
   target_compile_options(BlastEngine PRIVATE -Wall -Wextra -Wpedantic -Werror -g)
 endif()
 
-if(WIN32)
-add_subdirectory("C:/glfw-3.4/" glfw3)
-elseif(UNIX)
-find_package(glfw3 3.4 REQUIRED)
-endif()
-
 find_package(Vulkan REQUIRED)
-find_package(slang REQUIRED)
-find_package(glm REQUIRED)
+
+set(SLANG_ENABLE_VULKAN ON)
+set(SLANG_USE_SYSTEM_VULKAN_HEADERS ON)
+set(SLANG_ENABLE_TESTS OFF)
+set(SLANG_ENABLE_EXAMPLES OFF)
+set(SLANG_ENABLE_GFX OFF)
 
 add_subdirectory(include)
 add_subdirectory(src)
+add_subdirectory(ext/glfw)
+add_subdirectory(ext/glm)
+add_subdirectory(ext/slang)
 add_subdirectory(ext/vk-bootstrap)
 
 target_include_directories(BlastEngine PRIVATE
@@ -38,6 +39,6 @@ target_link_libraries(BlastEngine PRIVATE
 	glfw
 	Vulkan::Vulkan
 	vk-bootstrap::vk-bootstrap
-	slang::slang
+	slang
 	glm::glm
 )
