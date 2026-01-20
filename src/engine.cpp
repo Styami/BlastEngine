@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "descriptor.hpp"
 #include "shaderCompiler.hpp"
 #include "texture.hpp"
 #include <ranges>
@@ -243,7 +244,7 @@ void Engine::createGraphicPipeline() {
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo(
 		{},
 		1,
-		ubo.getLayouts().data(),
+		&descriptor.getLayout(),
 		0
 	);
 	
@@ -282,19 +283,24 @@ void Engine::createGraphicPipeline() {
 }
 
 void Engine::createDescriptorSetLayout() {
-	ubo = be::Descriptor(vkDevice, MAX_FRAME_IN_FLIGHT);
-	ubo.setDeviceSize(sizeof(glm::mat4))
-		.setType(vk::DescriptorType::eUniformBuffer)
-		.setPhysicalDevice(vkPhysicalDevice)
-		.setShaderStage(vk::ShaderStageFlagBits::eVertex)
-		.setSharingMode(vk::SharingMode::eExclusive)
-		.setUsage(vk::BufferUsageFlagBits::eUniformBuffer);
-	ubo.build();
-	ubo.map();
+	descriptor = be::Descriptor(vkDevice);
+	uniformBufferObjects.resize(MAX_FRAME_IN_FLIGHT);
+	for (be::Buffer& ubo : uniformBufferObjects) {
+		ubo = be::Buffer(vkDevice, sizeof(glm::mat4));
+		ubo.create(vk::BufferUsageFlagBits::eUniformBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
+		ubo.map();
+	
+	}
+	std::vector bindings = {
+		vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex),
+		vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)
+	};
+
+	descriptor.createSetLayout(bindings);
 }
 
 void Engine::createDescriptorSets() {
-	ubo.allocate(descriptorPool);
+	descriptor.createSet(MAX_FRAME_IN_FLIGHT, uniformBufferObjects, textures);
 }
 
 
@@ -319,11 +325,10 @@ void Engine::loadTextures() {
 							vk::SharingMode::eExclusive,
 							vk::MemoryPropertyFlagBits::eDeviceLocal
 		);
+		texture.createImageView(vk::Format::eR8G8B8A8Srgb);
 		texture.transitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, commandPool);
 		texture.copyBufferToImage(commandPool);
-		texture.transitionImageLayout(vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, commandPool);
-
-	}
+		texture.transitionImageLayout(vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, commandPool);	}
 }
 
 void Engine::createCommandPool() {
@@ -336,18 +341,12 @@ void Engine::createCommandPool() {
 }
 
 void Engine::createDescriptorPool() {
-	vk::DescriptorPoolSize poolSize = vk::DescriptorPoolSize(
-		vk::DescriptorType::eUniformBuffer,
-		MAX_FRAME_IN_FLIGHT
-	);
-	vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo = vk::DescriptorPoolCreateInfo(
-		{},
-		MAX_FRAME_IN_FLIGHT,
-		1,
-		&poolSize
-	);
-	descriptorPool = vkDevice.createDescriptorPool(descriptorPoolCreateInfo);
 
+	std::vector poolSize = {
+		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, MAX_FRAME_IN_FLIGHT),
+		vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, MAX_FRAME_IN_FLIGHT)
+	};
+	descriptor.createPool(poolSize, MAX_FRAME_IN_FLIGHT);
 }
 
 void Engine::createVertexBuffer() {
@@ -463,7 +462,7 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 	VkDeviceSize offests[] = {0};
 	commandBuffer.bindVertexBuffers(0, 1, &vbo.getBuffer(), offests);
 	commandBuffer.bindIndexBuffer(ibo.getBuffer(), 0, vk::IndexType::eUint32);
-	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, ubo.getSets()[imageIndex], {});
+	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptor.getSets()[imageIndex], {});
 
 	vk::Viewport viewport = vk::Viewport(
 		0,
@@ -505,10 +504,9 @@ void Engine::createSyncObjects() {
 	}
 }
 
-void Engine::updateUniformBuffer(uint32_t image) {
+void Engine::updateUniformBuffer(uint32_t imageIndex) {
 	glm::mat4 vp = camera->getProj() * camera->getView();
-	std::vector dataToUpdate = {vp};
-	ubo.update<glm::mat4>(dataToUpdate, image);
+	uniformBufferObjects[imageIndex].update<glm::mat4>(&vp);
 }
 
 void Engine::drawFrame(double ) {
@@ -589,14 +587,14 @@ void Engine::initVulkan() {
 	getQueueFamilies();
 	createSwapChain();
 	createImageViews();
-	createDescriptorPool();
 	createDescriptorSetLayout();
-	createDescriptorSets();
 	createGraphicPipeline();
 	createCommandPool();
 	createVertexBuffer();
 	createIndexBuffer();
 	loadTextures();
+	createDescriptorPool();
+	createDescriptorSets();
 	createCommandBuffers();
 	createSyncObjects();
 }
@@ -614,11 +612,12 @@ void Engine::cleanUp() {
 	vkDevice.destroyPipelineLayout(pipelineLayout);
 	vbo.clean();
 	ibo.clean();
-	ubo.clean(descriptorPool);
+	for(be::Buffer& ubo : uniformBufferObjects)
+		ubo.clean();
 	for(be::Texture& texture : textures)
 		texture.clean();
 	be::Texture::cleanSampler();
-	vkDevice.destroyDescriptorPool(descriptorPool);
+	descriptor.clean();
 	vkDevice.destroyPipeline(graphicsPipeline);
 	vkDevice.destroyCommandPool(commandPool);
 	for(size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) { 

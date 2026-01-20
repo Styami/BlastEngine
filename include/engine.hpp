@@ -87,7 +87,7 @@ class Engine
 
 		void loadTextures();
 
-		
+
 		vkb::Instance vkbInstance;
 		vk::Instance vkInstance;
 		vkb::PhysicalDevice vkbPhysicalDevice;
@@ -115,8 +115,9 @@ class Engine
 		std::vector<MeshObject> objects;
 		be::Buffer vbo;
 		be::Buffer ibo;
-		be::Descriptor ubo;
+		std::vector<be::Buffer> uniformBufferObjects;
 		std::vector<be::Texture> textures;
+		be::Descriptor descriptor;
 		vk::DescriptorPool descriptorPool;
 		Camera* camera;
 		

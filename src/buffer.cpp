@@ -118,9 +118,18 @@ void be::Buffer::copyBuffer(be::Buffer& stagingBuffer, vk::CommandPool commandPo
     stagingBuffer.clean();
 }
 
-const vk::Buffer& be::Buffer::getBuffer() {
+void be::Buffer::map() {
+	m_data = m_device.mapMemory(m_memory, 0, m_size);
+}
+
+const vk::Buffer& be::Buffer::getBuffer() const {
     return m_buffer;
 }
+
+vk::DeviceSize be::Buffer::getSize() const {
+	return m_size;
+}
+
 
 void be::Buffer::clean(){
     m_device.destroyBuffer(m_buffer);

@@ -19,6 +19,7 @@ void be::Texture::setPhysicalDevice(vk::PhysicalDevice physicalDevice) {
 }
 
 void be::Texture::loadImage(const std::filesystem::path& name) {
+    stbi_set_flip_vertically_on_load(true);
     stbi_uc* pixels = stbi_load(name.c_str(), &m_width, &m_height, &m_texChannels, STBI_rgb_alpha);
     if (pixels == nullptr) {
         std::string errorMsg = std::format("Failed to load {} texture", name.c_str());
@@ -27,7 +28,7 @@ void be::Texture::loadImage(const std::filesystem::path& name) {
 
     m_buffer = be::Buffer(m_device, m_height * m_width * 4);
     m_buffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, m_physicalDevice);
-    m_buffer.map<stbi_uc>(std::vector<stbi_uc>(pixels, pixels + (m_width * m_height * m_texChannels)));
+    m_buffer.map<stbi_uc>(std::vector<stbi_uc>(pixels, pixels + (m_width * m_height * 4)));
     stbi_image_free(pixels);
 }
 
@@ -116,8 +117,8 @@ void be::Texture::createImageView(vk::Format format) {
         {},
         vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)
     );
-    [[maybe_unused]]
-    vk::ImageView m_imageView = m_device.createImageView(imageViewInfo);
+    
+    m_imageView = m_device.createImageView(imageViewInfo);
 }
 
 void be::Texture::createTextureSampler() {
@@ -139,11 +140,27 @@ void be::Texture::createTextureSampler() {
     sampler = m_device.createSampler(samplerInfo);
 }
 
+vk::ImageView be::Texture::getImageView() const {
+    return m_imageView;
+}
+
+vk::Image be::Texture::getImage() const {
+    return m_image;
+}
+
+vk::Sampler be::Texture::getSampler() {
+    return sampler;
+}
+
+vk::Buffer be::Texture::getBuffer() const {
+    return m_buffer.getBuffer();
+}
 
 void be::Texture::clean() {
     m_buffer.clean();
     m_device.freeMemory(m_memory);
     m_device.destroyImage(m_image);
+    m_device.destroyImageView(m_imageView);
 }
 
 void be::Texture::cleanSampler() {

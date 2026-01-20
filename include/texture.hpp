@@ -27,6 +27,10 @@ namespace be {
             void createImageView(vk::Format format);
     		static void createTextureSampler();
             static void cleanSampler(); 
+            vk::ImageView getImageView() const;
+            vk::Image getImage() const;
+            vk::Buffer getBuffer() const;
+            static vk::Sampler getSampler();
             void clean();
         private:
             inline static vk::Device m_device = nullptr;
