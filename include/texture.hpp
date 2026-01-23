@@ -11,7 +11,7 @@ namespace be {
             static void setDevice(vk::Device device);
             static void setPhysicalDevice(vk::PhysicalDevice physicaldevice);
             void loadImage(const std::filesystem::path& name);
-            void createImage(
+            void createTextureImage(
                 vk::ImageType type,
                 vk::Format format,
                 uint32_t mipLevel,
@@ -24,7 +24,6 @@ namespace be {
             );
             void copyBufferToImage(vk::CommandPool commandPool);
             void transitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::CommandPool commandPool);
-            void createImageView(vk::Format format);
     		static void createTextureSampler();
             static void cleanSampler(); 
             vk::ImageView getImageView() const;

@@ -58,13 +58,14 @@ class Engine
 
 		void transition_image_layout(
 			vk::CommandBuffer commandBuffer,
-			uint32_t imageIndex,
+			vk::Image image,
 			vk::ImageLayout oldLayout,
 			vk::ImageLayout newLayout,
 			vk::AccessFlags2 srcAccessMask,
 			vk::AccessFlags2 dstAccessMask,
 			vk::PipelineStageFlags2 srcStageMask,
-			vk::PipelineStageFlags2 dstStageMask
+			vk::PipelineStageFlags2 dstStageMask,
+			vk::ImageSubresourceRange imageSubresourceRange
 		);
 
 		void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
@@ -87,6 +88,7 @@ class Engine
 
 		void loadTextures();
 
+		void createDepthMaps();
 
 		vkb::Instance vkbInstance;
 		vk::Instance vkInstance;
@@ -114,11 +116,16 @@ class Engine
 		std::array<vk::Fence, MAX_FRAME_IN_FLIGHT> inFlightFences;
 		std::vector<MeshObject> objects;
 		be::Buffer vbo;
+		size_t numVerticies = 0;
 		be::Buffer ibo;
 		std::vector<be::Buffer> uniformBufferObjects;
 		std::vector<be::Texture> textures;
 		be::Descriptor descriptor;
 		vk::DescriptorPool descriptorPool;
+		vk::ImageView depthMapView;
+		vk::Image depthMapImage;
+		vk::DeviceMemory depthMapMemory;
+		vk::Format depthMapFormat;
 		Camera* camera;
 		
 

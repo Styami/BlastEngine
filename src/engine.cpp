@@ -2,6 +2,7 @@
 #include "descriptor.hpp"
 #include "shaderCompiler.hpp"
 #include "texture.hpp"
+#include "utils.hpp"
 #include <ranges>
 #include <print>
 
@@ -241,6 +242,15 @@ void Engine::createGraphicPipeline() {
 		&colorBlendAttachmentState
 	);
 
+	vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo = vk::PipelineDepthStencilStateCreateInfo(
+		{},
+		vk::True,
+		vk::True,
+		vk::CompareOp::eLess,
+		vk::False,
+		vk::False
+	);
+
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo(
 		{},
 		1,
@@ -253,7 +263,8 @@ void Engine::createGraphicPipeline() {
 	vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo(
 		{},
 		1,
-		&swapChainImageFormat
+		&swapChainImageFormat,
+		depthMapFormat
 	);
 
 	vk::GraphicsPipelineCreateInfo graphicPipelineInfo = vk::GraphicsPipelineCreateInfo(
@@ -266,7 +277,7 @@ void Engine::createGraphicPipeline() {
 		&viewportStateInfo,
 		&rasterizationStateInfo,
 		&multisamplingStateInfo,
-		{},
+		&depthStencilStateCreateInfo,
 		&blendStateCreateInfo,
 		&dynamicStateInfo,
 		pipelineLayout
@@ -315,7 +326,7 @@ void Engine::loadTextures() {
 	std::filesystem::path imagePath = std::filesystem::current_path()/"data"/"textures";
 	textures.push_back(be::Texture(imagePath / "FFXIV_Endwalker.jpg", graphicsQueue));
 	for (be::Texture& texture : textures) {
-		texture.createImage(vk::ImageType::e2D,
+		texture.createTextureImage(vk::ImageType::e2D,
 							vk::Format::eR8G8B8A8Srgb,
 							1,
 							1,
@@ -325,10 +336,10 @@ void Engine::loadTextures() {
 							vk::SharingMode::eExclusive,
 							vk::MemoryPropertyFlagBits::eDeviceLocal
 		);
-		texture.createImageView(vk::Format::eR8G8B8A8Srgb);
 		texture.transitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, commandPool);
 		texture.copyBufferToImage(commandPool);
-		texture.transitionImageLayout(vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, commandPool);	}
+		texture.transitionImageLayout(vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, commandPool);
+	}
 }
 
 void Engine::createCommandPool() {
@@ -350,7 +361,7 @@ void Engine::createDescriptorPool() {
 }
 
 void Engine::createVertexBuffer() {
-	loadObjects(); // temporary. IT HAS TO BE CHANGE IN FUTURE!!!!!!!
+	loadObjects(); // TODO : IT HAS TO BE CHANGE IN FUTURE!!!!!!!
 	std::vector<Vertex> verticesToRender;
 	for (MeshObject object : objects) {
 		std::ranges::for_each(object.getVertices(), [&verticesToRender](const Vertex& v) {
@@ -377,6 +388,7 @@ void Engine::createIndexBuffer() {
 		});
 	}
 	vk::DeviceSize iboSize = sizeof(int) * indicesOfVertices.size();
+	numVerticies = indicesOfVertices.size();
 	be::Buffer stagingBuffer = be::Buffer(vkDevice, iboSize);
 	stagingBuffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
 	stagingBuffer.map<int>(indicesOfVertices);
@@ -396,15 +408,43 @@ void Engine::createCommandBuffers() {
 	std::copy_n(vkDevice.allocateCommandBuffers(allocateInfo).begin(), commandBuffers.size(), commandBuffers.begin());
 }
 
+void Engine::createDepthMaps() {
+	depthMapFormat = findSupportedFormat(
+		vkPhysicalDevice, {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint}, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment
+	);
+	std::tie(depthMapMemory, depthMapImage) = createImage(
+		vkDevice,
+		vkPhysicalDevice,
+		vk::ImageType::e2D,
+		depthMapFormat,
+		vk::Extent3D(swapChainExtent.width, swapChainExtent.height, 1),
+		1,
+		1,
+		vk::SampleCountFlagBits::e1,
+		vk::ImageTiling::eOptimal,
+		vk::ImageUsageFlagBits::eDepthStencilAttachment,
+		vk::SharingMode::eExclusive,
+		vk::MemoryPropertyFlagBits::eDeviceLocal
+	);
+	depthMapView = createImageView(
+		vkDevice, 
+		depthMapImage, 
+		vk::ImageViewType::e2D, 
+		depthMapFormat, 
+		vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eDepth, 0, 1, 0, 1)
+	);
+}
+
 void Engine::transition_image_layout(
 	vk::CommandBuffer commandBuffer,
-	uint32_t imageIndex,
+	vk::Image image,
 	vk::ImageLayout oldLayout,
 	vk::ImageLayout newLayout,
 	vk::AccessFlags2 srcAccessMask,
 	vk::AccessFlags2 dstAccessMask,
 	vk::PipelineStageFlags2 srcStageMask,
-	vk::PipelineStageFlags2 dstStageMask
+	vk::PipelineStageFlags2 dstStageMask,
+	vk::ImageSubresourceRange imageSubresourceRange
 ) {
 	vk::ImageMemoryBarrier2 barrier(
 		srcStageMask,
@@ -415,8 +455,8 @@ void Engine::transition_image_layout(
 		newLayout,
 		VK_QUEUE_FAMILY_IGNORED,
 		VK_QUEUE_FAMILY_IGNORED,
-		swapChainImages[imageIndex],
-		vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)
+		image,
+		imageSubresourceRange
 	);
 
 	vk::DependencyInfo dependencyInfo = vk::DependencyInfo({}, {}, {}, {}, {}, 1, &barrier);
@@ -429,17 +469,30 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 
 	transition_image_layout(
 		commandBuffer,
-		imageIndex,
+		swapChainImages[imageIndex],
 		vk::ImageLayout::eUndefined,
 		vk::ImageLayout::eColorAttachmentOptimal,
-		{},
+		vk::AccessFlagBits2::eColorAttachmentWrite,
 		vk::AccessFlagBits2::eColorAttachmentWrite,
 		vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-		vk::PipelineStageFlagBits2::eColorAttachmentOutput
+		vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+		vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)
+	);
+	transition_image_layout(
+		commandBuffer, 
+		depthMapImage, 
+		vk::ImageLayout::eUndefined, 
+		vk::ImageLayout::eDepthAttachmentOptimal, 
+		{}, 
+		vk::AccessFlagBits2::eDepthStencilAttachmentWrite, 
+		vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+		vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+		vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eDepth, 0, 1, 0, 1)
 	);
 	vk::ClearValue clearColor = vk::ClearColorValue(0.01f, 0.01f, 0.01f, 1.0f);
-	vk::RenderingAttachmentInfo attachementInfo =
-	vk::RenderingAttachmentInfo(
+	vk::ClearValue clearColorDepth = vk::ClearDepthStencilValue(1, 0);
+
+	vk::RenderingAttachmentInfo attachementInfo = vk::RenderingAttachmentInfo(
 		swapChainImageViews[imageIndex],
 		vk::ImageLayout::eColorAttachmentOptimal,
 		vk::ResolveModeFlagBits::eNone,
@@ -449,14 +502,26 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 		vk::AttachmentStoreOp::eStore,
 		clearColor
 	);
+	vk::RenderingAttachmentInfo depthAttachementInfo = vk::RenderingAttachmentInfo(
+		depthMapView,
+		vk::ImageLayout::eDepthAttachmentOptimal,
+		vk::ResolveModeFlagBits::eNone,
+		{},
+		vk::ImageLayout::eUndefined,
+		vk::AttachmentLoadOp::eClear,
+		vk::AttachmentStoreOp::eDontCare,
+		clearColorDepth
+	);
 	vk::RenderingInfo renderingInfo = vk::RenderingInfo(
 		{},
 		vk::Rect2D({0,0}, swapChainExtent),
 		1,
 		{},
 		1,
-		&attachementInfo
+		&attachementInfo,
+		&depthAttachementInfo
 	);
+
 	commandBuffer.beginRendering(renderingInfo);
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
 	VkDeviceSize offests[] = {0};
@@ -480,17 +545,18 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 	);
 	commandBuffer.setScissor(0, 1, &scissor);
 
-	commandBuffer.drawIndexed(6, 1, 0, 0, 0);
+	commandBuffer.drawIndexed(numVerticies, 1, 0, 0, 0);
 	commandBuffer.endRendering();
 	transition_image_layout(
 		commandBuffer,
-		imageIndex,
+		swapChainImages[imageIndex],
 		vk::ImageLayout::eColorAttachmentOptimal,
 		vk::ImageLayout::ePresentSrcKHR,
 		vk::AccessFlagBits2::eColorAttachmentWrite,
 		{},
 		vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-		vk::PipelineStageFlagBits2::eBottomOfPipe
+		vk::PipelineStageFlagBits2::eBottomOfPipe,
+		vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)
 	);
 	
 	commandBuffer.end();
@@ -588,6 +654,7 @@ void Engine::initVulkan() {
 	createSwapChain();
 	createImageViews();
 	createDescriptorSetLayout();
+	createDepthMaps();
 	createGraphicPipeline();
 	createCommandPool();
 	createVertexBuffer();
@@ -618,6 +685,9 @@ void Engine::cleanUp() {
 		texture.clean();
 	be::Texture::cleanSampler();
 	descriptor.clean();
+	vkDevice.destroyImage(depthMapImage);
+	vkDevice.destroyImageView(depthMapView);
+	vkDevice.freeMemory(depthMapMemory);
 	vkDevice.destroyPipeline(graphicsPipeline);
 	vkDevice.destroyCommandPool(commandPool);
 	for(size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) { 

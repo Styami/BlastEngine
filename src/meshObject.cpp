@@ -5,9 +5,15 @@ MeshObject::MeshObject() :
 		{glm::vec3(-1.02, 0.0, 0) + glm::normalize(glm::vec3(std::sqrt(2)/2, -std::sqrt(2)/2, 0)), {1, 0, 0}, {0, 0}},
 		{glm::vec3(-1.02, 0.0, 0) + glm::normalize(glm::vec3(std::sqrt(2)/2, -std::sqrt(2)/2, 0)) + (16.f/9) * glm::normalize(glm::vec3(std::sqrt(2)/2, std::sqrt(2)/2, 0)), {0, 0, 1}, {1, 0}},
 		{{-1.02, 0.0, 0}, {0, 1, 0}, {0, 1}},
-        {glm::vec3(-1.02, 0.0, 0) + (16.f/9) * glm::normalize(glm::vec3(std::sqrt(2)/2, std::sqrt(2)/2, 0)), {1, 0, 0}, {1, 1}}
+        {glm::vec3(-1.02, 0.0, 0) + (16.f/9) * glm::normalize(glm::vec3(std::sqrt(2)/2, std::sqrt(2)/2, 0)), {1, 0, 0}, {1, 1}},
+		{glm::vec3(-1.02, -1.0, -1) + glm::normalize(glm::vec3(std::sqrt(2)/2, -std::sqrt(2)/2, 0)), {1, 0, 0}, {0, 0}},
+		{glm::vec3(-1.02, -1.0, -1) + glm::normalize(glm::vec3(std::sqrt(2)/2, -std::sqrt(2)/2, 0)) + (16.f/9) * glm::normalize(glm::vec3(std::sqrt(2)/2, std::sqrt(2)/2, 0)), {0, 0, 1}, {1, 0}},
+		{{-1.02, -1.0, -1}, {0, 1, 0}, {0, 1}},
+        {glm::vec3(-1.02, -1.0, -1) + (16.f/9) * glm::normalize(glm::vec3(std::sqrt(2)/2, std::sqrt(2)/2, 0)), {1, 0, 0}, {1, 1}}
 	}),
-    indices({0, 1, 2, 3, 2, 1}),
+    indices({
+            0, 1, 2, 3, 2, 1,
+             4, 5, 6, 7, 6, 5}),
     model(1)
 {}
 

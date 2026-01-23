@@ -32,7 +32,7 @@ void be::Texture::loadImage(const std::filesystem::path& name) {
     stbi_image_free(pixels);
 }
 
-void be::Texture::createImage(vk::ImageType type,
+void be::Texture::createTextureImage(vk::ImageType type,
                                 vk::Format format,
                                 uint32_t mipLevel,
                                 uint32_t arrayLayers,
@@ -43,27 +43,27 @@ void be::Texture::createImage(vk::ImageType type,
                                 vk::MemoryPropertyFlags properties
     ) {
 
-    vk::ImageCreateInfo imageInfo = vk::ImageCreateInfo(
-        {},
+    std::tie(m_memory, m_image) = createImage(
+        m_device,
+        m_physicalDevice,
         type,
         format,
-        vk::Extent3D(m_width, m_height, 1),
+        {static_cast<uint32_t>((m_width)), static_cast<uint32_t>(m_height), 1},
         mipLevel,
         arrayLayers,
         sampleCount,
         tiling,
         usage,
-        sharingMode
+        sharingMode,
+        properties
     );
-    m_image = m_device.createImage(imageInfo);
-    vk::MemoryRequirements memory = m_device.getImageMemoryRequirements(m_image);
-    
-    vk::MemoryAllocateInfo memoryInfo = vk::MemoryAllocateInfo(
-        memory.size,
-        findMemoryType(memory.memoryTypeBits, properties, m_physicalDevice)
+    m_imageView = createImageView(
+        m_device,
+        m_image,
+        vk::ImageViewType::e2D,
+        format,
+        vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)
     );
-    m_memory = m_device.allocateMemory(memoryInfo);
-    m_device.bindImageMemory(m_image, m_memory, 0);
 }
 
 void be::Texture::copyBufferToImage(vk::CommandPool commandPool) {
@@ -106,19 +106,6 @@ void be::Texture::transitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayo
     barrier.setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
     commandBuffer.pipelineBarrier(srcStage, dstStage, {}, {}, {}, barrier);
     endSingleTimeCommands(m_device, commandPool, commandBuffer, m_queue);
-}
-
-void be::Texture::createImageView(vk::Format format) {
-    vk::ImageViewCreateInfo imageViewInfo = vk::ImageViewCreateInfo(
-        {},
-        m_image,
-        vk::ImageViewType::e2D,
-        format,
-        {},
-        vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)
-    );
-    
-    m_imageView = m_device.createImageView(imageViewInfo);
 }
 
 void be::Texture::createTextureSampler() {
