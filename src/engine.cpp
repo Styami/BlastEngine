@@ -129,6 +129,7 @@ void Engine::recreateSwapChain() {
 	
 	createSwapChain();
 	createImageViews();
+	createDepthMaps();
 }
 
 void Engine::createImageViews() {
