@@ -1,9 +1,17 @@
-# Prerequisites:
-Please install:
-- Vulkan SDK [here](https://vulkan.lunarg.com/)
-- CMake at least 3.28
-- glm
-- Slang compilation API (Follow build instructions of sources [here](https://github.com/shader-slang/slang/blob/master/docs/building.md) and create a slang install directorie that will be used by the project's CMake)
+A 3D Vulkan renderer which works on Linux
+
+Thing I did :
+- Uniform variable
+- Loading texture
+- Depth map
+
+TODO :
+- Load gltf models
+- Mipmaping
+- Improve camera's movements
+- Lighting
+- Deferred rendering
+- PBR
 
 # Clone and build
 
@@ -19,5 +27,5 @@ cmake --build build
 ```
 Finally run from the root
 ```bash
-build/BlastEngine
+./build/BlastEngine
 ```
