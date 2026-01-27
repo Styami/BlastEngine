@@ -18,7 +18,7 @@ Camera::Camera(float aspect, float fov, const glm::vec3& position) :
     m_rotation(glm::vec3(0)),
     m_side(1, 0, 0),
     m_up(0, 1, 0),
-    m_forward(0, 0, -1),
+    m_forward(0, 0, 1),
     m_aspect(aspect),
     m_fov(fov),
     radianPerMillisec(glm::radians(0.1)),
@@ -76,9 +76,9 @@ void Camera::upward(double deltaTime) {
     float oldRotation = m_rotation.x;
     m_rotation.x = glm::clamp((m_rotation.x + angle), glm::radians(-90.f), glm::radians(90.f));
     angle = m_rotation.x - oldRotation; //permit to know the real angle to rotate
-    m_up = glm::rotate(glm::mat4(1), -angle, m_side) * glm::vec4(m_up, 1);
+    m_up = glm::rotate(glm::mat4(1), angle, m_side) * glm::vec4(m_up, 1);
 
-    m_forward = -glm::normalize(glm::cross(m_side, m_up));
+    m_forward = glm::normalize(glm::cross(m_side, m_up));
 }
 
 void Camera::downward(double deltaTime) {
@@ -86,9 +86,9 @@ void Camera::downward(double deltaTime) {
     float oldRotation = m_rotation.x;
     m_rotation.x = glm::clamp((m_rotation.x - angle), glm::radians(-90.f), glm::radians(90.f));
     angle = m_rotation.x - oldRotation;
-    m_up = glm::rotate(glm::mat4(1), -angle, m_side) * glm::vec4(m_up, 1);
+    m_up = glm::rotate(glm::mat4(1), angle, m_side) * glm::vec4(m_up, 1);
 
-    m_forward = -glm::normalize(glm::cross(m_side, m_up));
+    m_forward = glm::normalize(glm::cross(m_side, m_up));
 }
 
 void Camera::setAspect(float aspect) {
@@ -103,7 +103,7 @@ glm::mat4 Camera::getView() const {
         {0, 0, 0, 1}
     };
 
-    return glm::translate(view, -m_position);
+    return glm::translate(glm::transpose(view), -m_position);
 }
 
 glm::mat4 Camera::getProj() const {

@@ -8,12 +8,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 add_executable(BlastEngine)
 
 if(MSVC)
-  target_compile_options(BlastEngine PRIVATE /W4 /WX)
+	target_compile_options(BlastEngine PRIVATE /W4 /WX)
 elseif(MINGW)
 	target_compile_options(BlastEngine PRIVATE -Wall -Wextra -Wpedantic -Werror -g)
 	target_link_libraries(BlastEngine PRIVATE -lstdc++exp)
 else()
-  target_compile_options(BlastEngine PRIVATE -Wall -Wextra -Wpedantic -Werror -g)
+  target_compile_options(BlastEngine PRIVATE -Wall -Wextra -Wpedantic -Werror -g -O0)
 endif()
 
 find_package(Vulkan REQUIRED)
@@ -30,6 +30,7 @@ add_subdirectory(ext/glfw)
 add_subdirectory(ext/glm)
 add_subdirectory(ext/slang)
 add_subdirectory(ext/vk-bootstrap)
+add_subdirectory(ext/tinyobjloader)
 
 target_include_directories(BlastEngine PRIVATE
 	include
@@ -41,4 +42,5 @@ target_link_libraries(BlastEngine PRIVATE
 	vk-bootstrap::vk-bootstrap
 	slang
 	glm::glm
+	tinyobjloader
 )

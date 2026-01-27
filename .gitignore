@@ -5,3 +5,5 @@ build/*
 *.slang-module
 *.frag
 *.vert
+data/sponza
+data/main_sponza

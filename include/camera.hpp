@@ -6,7 +6,7 @@
 class Camera {
     public:
         Camera();
-        Camera(float aspect, float fov, const glm::vec3& position = glm::vec3(0, 0, -1));
+        Camera(float aspect, float fov, const glm::vec3& position = glm::vec3(0, 0, 1));
         Camera(const Camera& another);
         Camera& operator=(const Camera& another);
         void forward(double deltaTime);

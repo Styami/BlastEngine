@@ -1,13 +1,15 @@
 module vertexModule;
 
 public struct VSInput {
-    public __init(float3 position, float3 color, float2 texCoord) {
+    public __init(float3 position, float3 color, float3 normal, float2 texCoord) {
         this.position = position;
         this.color = color;
         this.texCoord = texCoord;
+        this.normal = normal;
     }
     public float3 position;
     public float3 color;
+    public float3 normal;
     public float2 texCoord;
 };
 

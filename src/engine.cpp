@@ -3,6 +3,7 @@
 #include "shaderCompiler.hpp"
 #include "texture.hpp"
 #include "utils.hpp"
+#include <filesystem>
 #include <ranges>
 #include <print>
 
@@ -208,7 +209,7 @@ void Engine::createGraphicPipeline() {
 		vk::False,
 		vk::False,
 		vk::PolygonMode::eFill,
-		vk::CullModeFlagBits::eBack,
+		vk::CullModeFlagBits::eNone,
 		vk::FrontFace::eCounterClockwise,
 		vk::False
 	).setLineWidth(1);
@@ -317,15 +318,15 @@ void Engine::createDescriptorSets() {
 
 
 void Engine::loadObjects() {
-	objects.push_back(MeshObject());
+	objects.push_back(MeshObject(std::filesystem::current_path()/"data"/"viking_room.obj"));
 }
 
 void Engine::loadTextures() {
 	be::Texture::setDevice(vkDevice);
 	be::Texture::setPhysicalDevice(vkPhysicalDevice);
 	be::Texture::createTextureSampler();
-	std::filesystem::path imagePath = std::filesystem::current_path()/"data"/"textures";
-	textures.push_back(be::Texture(imagePath / "FFXIV_Endwalker.jpg", graphicsQueue));
+	std::filesystem::path imagePath = std::filesystem::current_path()/"data";
+	textures.push_back(be::Texture(imagePath / "viking_room.png", graphicsQueue));
 	for (be::Texture& texture : textures) {
 		texture.createTextureImage(vk::ImageType::e2D,
 							vk::Format::eR8G8B8A8Srgb,
@@ -370,6 +371,7 @@ void Engine::createVertexBuffer() {
 		});
 	}
 	vk::DeviceSize vboSize = sizeof(Vertex) * verticesToRender.size();
+	//numVerticies = verticesToRender.size();
 	be::Buffer stagingBuffer = be::Buffer(vkDevice, vboSize);
 	stagingBuffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
 	stagingBuffer.map<Vertex>(verticesToRender);
@@ -547,6 +549,7 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 	commandBuffer.setScissor(0, 1, &scissor);
 
 	commandBuffer.drawIndexed(numVerticies, 1, 0, 0, 0);
+	//commandBuffer.draw(numVerticies, 1, 0, 0);
 	commandBuffer.endRendering();
 	transition_image_layout(
 		commandBuffer,
