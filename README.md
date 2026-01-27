@@ -1,14 +1,15 @@
 A 3D Vulkan renderer which works on Linux
 
-Thing I did :
+Things I did :
 - Uniform variable
 - Loading texture
 - Depth map
 
 TODO :
-- Load gltf models
-- Mipmaping
 - Improve camera's movements
+- Multisampling
+- Mipmaping
+- Load gltf models
 - Lighting
 - Deferred rendering
 - PBR
