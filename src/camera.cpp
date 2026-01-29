@@ -6,7 +6,7 @@ Camera::Camera() :
     m_rotation(0),
     m_side(1, 0, 0),
     m_up(0, 1, 0),
-    m_forward(0, 0, -1),
+    m_forward(0, 0, 1),
     m_aspect(16.f/9),
     m_fov(glm::radians(45.f)),
     radianPerMillisec(glm::radians(0.1)),
@@ -21,8 +21,8 @@ Camera::Camera(float aspect, float fov, const glm::vec3& position) :
     m_forward(0, 0, 1),
     m_aspect(aspect),
     m_fov(fov),
-    radianPerMillisec(glm::radians(0.1)),
-    distPerMillisec(0.01)
+    radianPerMillisec(glm::radians(0.0001)),
+    distPerMillisec(0.000005)
 {}
 
 Camera::Camera(const Camera& another) :

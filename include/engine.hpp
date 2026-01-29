@@ -68,7 +68,7 @@ class Engine
 			vk::ImageSubresourceRange imageSubresourceRange
 		);
 
-		void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex);
+		void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame);
 
 		void createSyncObjects();
 
@@ -112,7 +112,7 @@ class Engine
 		vk::CommandPool commandPool;
 		std::array<vk::CommandBuffer, MAX_FRAME_IN_FLIGHT> commandBuffers;
 		std::array<vk::Semaphore, MAX_FRAME_IN_FLIGHT> imageAvailableSemaphores;
-		std::array<vk::Semaphore, MAX_FRAME_IN_FLIGHT> renderFinishedSemaphores;
+		std::vector<vk::Semaphore> renderFinishedSemaphores;
 		std::array<vk::Fence, MAX_FRAME_IN_FLIGHT> inFlightFences;
 		std::vector<MeshObject> objects;
 		be::Buffer vbo;

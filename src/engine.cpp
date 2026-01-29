@@ -94,7 +94,10 @@ void Engine::getQueueFamilies() {
 
 void Engine::createSwapChain() {
 	vkb::SwapchainBuilder scBuilder = vkb::SwapchainBuilder(vkbDevice);
+	int width, height = 0;
+	renderer.getFrameBufferSize(width, height);
 	auto scBuilderRet = scBuilder.set_desired_min_image_count(2)
+													.set_desired_extent(width, height)
 													.build();
 	if (!scBuilderRet) {
 		throw std::runtime_error("Failed to create swap chain.");
@@ -126,9 +129,9 @@ void Engine::recreateSwapChain() {
 		renderer.waitEvents();
 		renderer.getFrameBufferSize(width, height);
 		camera->setAspect(static_cast<float>(width) / static_cast<float>(height));
+		createSwapChain();
 	}
 	
-	createSwapChain();
 	createImageViews();
 	createDepthMaps();
 }
@@ -466,7 +469,7 @@ void Engine::transition_image_layout(
 	commandBuffer.pipelineBarrier2(dependencyInfo);
 }
 
-void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) {	
+void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame) {	
 	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo();
 	commandBuffer.begin(beginInfo);
 
@@ -530,7 +533,7 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 	VkDeviceSize offests[] = {0};
 	commandBuffer.bindVertexBuffers(0, 1, &vbo.getBuffer(), offests);
 	commandBuffer.bindIndexBuffer(ibo.getBuffer(), 0, vk::IndexType::eUint32);
-	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptor.getSets()[imageIndex], {});
+	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptor.getSets()[currentFrame], {});
 
 	vk::Viewport viewport = vk::Viewport(
 		0,
@@ -549,7 +552,6 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 	commandBuffer.setScissor(0, 1, &scissor);
 
 	commandBuffer.drawIndexed(numVerticies, 1, 0, 0, 0);
-	//commandBuffer.draw(numVerticies, 1, 0, 0);
 	commandBuffer.endRendering();
 	transition_image_layout(
 		commandBuffer,
@@ -567,9 +569,12 @@ void Engine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t image
 }
 
 void Engine::createSyncObjects() {
+	renderFinishedSemaphores.resize(swapChainImages.size());
+	for (vk::Semaphore& renderFinishedSemaphore : renderFinishedSemaphores) {
+		renderFinishedSemaphore = vkDevice.createSemaphore(vk::SemaphoreCreateInfo());
+	}
 	for(size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) {
 		imageAvailableSemaphores[i] = vkDevice.createSemaphore(vk::SemaphoreCreateInfo());
-		renderFinishedSemaphores[i] = vkDevice.createSemaphore(vk::SemaphoreCreateInfo());
 		inFlightFences[i] = vkDevice.createFence(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
 	}
 }
@@ -605,7 +610,7 @@ void Engine::drawFrame(double ) {
 	
 	// Setup record of command buffer
 	commandBuffers[currentFrame].reset();
-	recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
+	recordCommandBuffer(commandBuffers[currentFrame], imageIndex, currentFrame);
 
 	updateUniformBuffer(currentFrame);
 	vk::PipelineStageFlags waitDstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
@@ -617,7 +622,7 @@ void Engine::drawFrame(double ) {
 		1,
 		&commandBuffers[currentFrame],
 		1,
-		&renderFinishedSemaphores[currentFrame]
+		&renderFinishedSemaphores[imageIndex]
 	);
 
 	graphicsQueue.submit(submitInfo, inFlightFences[currentFrame]);
@@ -625,7 +630,7 @@ void Engine::drawFrame(double ) {
 	// Present image phase
 	vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR(
 		1,
-		&renderFinishedSemaphores[currentFrame],
+		&renderFinishedSemaphores[imageIndex],
 		1,
 		&vkSwapChain,
 		&imageIndex
@@ -694,8 +699,9 @@ void Engine::cleanUp() {
 	vkDevice.freeMemory(depthMapMemory);
 	vkDevice.destroyPipeline(graphicsPipeline);
 	vkDevice.destroyCommandPool(commandPool);
+	for (vk::Semaphore& renderFinishedSemaphore : renderFinishedSemaphores) 
+		vkDevice.destroySemaphore(renderFinishedSemaphore);
 	for(size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) { 
-		vkDevice.destroySemaphore(renderFinishedSemaphores[i]);
 		vkDevice.destroySemaphore(imageAvailableSemaphores[i]);
 		vkDevice.destroyFence(inFlightFences[i]);
 	}

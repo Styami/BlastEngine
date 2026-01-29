@@ -28,7 +28,7 @@ void App::run() {
 	previousTime = std::chrono::high_resolution_clock::now();
 	while (isRunning) {
 		auto currentTime = std::chrono::high_resolution_clock::now();
-		auto deltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - previousTime);
+		auto deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - previousTime);
 		previousTime = currentTime;
 		isRunning = window.loop();
 		handler.event(window, camera, deltaTime.count());	
