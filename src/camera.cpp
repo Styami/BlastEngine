@@ -8,9 +8,9 @@ Camera::Camera() :
     m_up(0, 1, 0),
     m_forward(0, 0, 1),
     m_aspect(16.f/9),
-    m_fov(glm::radians(45.f)),
+    m_fov(glm::radians(90.f)),
     radianPerMillisec(glm::radians(0.1)),
-    distPerMillisec(0.01)
+    distPerMillisec(0.05)
 {}
 
 Camera::Camera(float aspect, float fov, const glm::vec3& position) :
@@ -72,23 +72,37 @@ void Camera::backward(double deltaTime) {
 }
 
 void Camera::upward(double deltaTime) {
-    float angle = radianPerMillisec * deltaTime;
-    float oldRotation = m_rotation.x;
-    m_rotation.x = glm::clamp((m_rotation.x + angle), glm::radians(-90.f), glm::radians(90.f));
-    angle = m_rotation.x - oldRotation; //permit to know the real angle to rotate
-    m_up = glm::rotate(glm::mat4(1), angle, m_side) * glm::vec4(m_up, 1);
-
-    m_forward = glm::normalize(glm::cross(m_side, m_up));
+    float dist = distPerMillisec * deltaTime;
+    m_position += m_up * dist;
 }
 
 void Camera::downward(double deltaTime) {
-    float angle = radianPerMillisec * deltaTime;
-    float oldRotation = m_rotation.x;
-    m_rotation.x = glm::clamp((m_rotation.x - angle), glm::radians(-90.f), glm::radians(90.f));
-    angle = m_rotation.x - oldRotation;
-    m_up = glm::rotate(glm::mat4(1), angle, m_side) * glm::vec4(m_up, 1);
+    float dist = distPerMillisec * deltaTime;
+    m_position -= m_up * dist;
+}
 
-    m_forward = glm::normalize(glm::cross(m_side, m_up));
+void Camera::horizontallyRotate(float angle) {
+    m_forward = glm::rotate(glm::mat4(1), -angle, m_up) * glm::vec4(m_forward, 0);
+}
+
+void Camera::verticallyRotate(float angle) {
+    float oldRotation = m_rotation.x;
+    m_rotation.x = glm::clamp((m_rotation.x + angle), glm::radians(-80.f), glm::radians(80.f));
+    angle = m_rotation.x - oldRotation; //permit to know the real angle to rotate
+    m_forward = glm::rotate(glm::mat4(1), angle, m_side) * glm::vec4(m_forward, 0);
+
+}
+
+
+void Camera::rotate(const glm::vec2& translate, double deltaTime) {
+    float anglex = translate.x * radianPerMillisec * deltaTime * 3;
+    float angley = translate.y * radianPerMillisec * deltaTime * 3;
+    verticallyRotate(angley);
+    horizontallyRotate(anglex);
+    m_side = glm::normalize(glm::cross(glm::vec3(0, 1, 0), m_forward));
+    m_up = glm::normalize(glm::cross(m_forward, m_side));
+
+
 }
 
 void Camera::setAspect(float aspect) {

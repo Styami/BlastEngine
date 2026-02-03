@@ -2,7 +2,9 @@
 #define WINDOW_HPP
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 #include <string>
+#include "enum_input.hpp"
 
 const uint16_t WIDTH_HD = 1280;
 const uint16_t HEIGHT_HD = 720;
@@ -31,11 +33,18 @@ class Window {
 		void resetFrameBufferResized();
 		void waitEvents();
 		GLFWwindow* getWindow() const;
+		glm::vec2 getCursorPos() const;
+		std::tuple<std::array<bool, static_cast<size_t>(Input::count)>, glm::vec2> getCursorInfo() const;
 		
 	private:
 		static void frameBufferResizeCallback(GLFWwindow* window, int width, int height);
+		static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
+		static void cursorButtonInfoCallback(GLFWwindow* window, int button, int action, int mods);
+		static void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 		GLFWwindow* window;
 		bool framebufferResized;
+		glm::vec2 m_cursorPos;
+		std::array<bool, static_cast<size_t>(Input::count)> m_buttonPressed;
 };
 
 #endif

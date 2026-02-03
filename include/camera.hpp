@@ -16,6 +16,9 @@ class Camera {
         void upward(double deltaTime);
         void downward(double deltaTime);
         void setAspect(float aspect);
+        void rotate(const glm::vec2& translate, double deltaTime);
+        void horizontallyRotate(float angle);
+        void verticallyRotate(float angle);
 
         glm::mat4 getView() const;
         glm::mat4 getProj() const;

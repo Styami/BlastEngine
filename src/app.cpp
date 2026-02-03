@@ -6,7 +6,7 @@
 App::App() :
 	handler(),
 	window(),
-	camera(1920.f/1080, glm::radians(45.f)),
+	camera(1920.f/1080, glm::radians(90.f)),
 	engine(window, camera),
 	isRunning(true),
 	previousTime()
