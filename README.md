@@ -37,6 +37,7 @@ Finally run from the root
 |Q|Left|
 |S|Backward|
 |D|Right|
-|Ctrl|downward|
+|Left shift|Downward|
 |Space|Upward|
+|Left ctrl|Sprint|
 |Mouse left click|Rotate camera| 
