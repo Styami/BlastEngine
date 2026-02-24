@@ -16,6 +16,9 @@ class Camera {
         void upward(double deltaTime);
         void downward(double deltaTime);
         void setAspect(float aspect);
+        void setSprint(bool isSprinting);
+        bool isSprinting() const;
+        void accelerate(float factor);
         void rotate(const glm::vec2& translate, double deltaTime);
         void horizontallyRotate(float angle);
         void verticallyRotate(float angle);
@@ -31,8 +34,9 @@ class Camera {
         glm::vec3 m_forward;
         float m_aspect;
         float m_fov;
-        float radianPerMillisec;
-        float distPerMillisec;
+        float m_radianPerMillisec;
+        float m_distPerMillisec;
+        bool m_sprint;
 
 };
 

@@ -114,10 +114,10 @@ void Window::keyboardCallback(GLFWwindow* window, int key, int, int action, int)
 	if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
 		renderer->m_buttonPressed[static_cast<unsigned int>(Input::right)] = false;
 	}
-	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS) {
+	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_PRESS) {
 		renderer->m_buttonPressed[static_cast<unsigned int>(Input::down)] = true;
 	}
-	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_RELEASE) {
+	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_RELEASE) {
 		renderer->m_buttonPressed[static_cast<unsigned int>(Input::down)] = false;
 	}
 	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
@@ -125,6 +125,12 @@ void Window::keyboardCallback(GLFWwindow* window, int key, int, int action, int)
 	}
 	if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) {
 		renderer->m_buttonPressed[static_cast<unsigned int>(Input::up)] = false;
+	}
+	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS) {
+		renderer->m_buttonPressed[static_cast<unsigned int>(Input::sprint)] = true;
+	}
+	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_RELEASE) {
+		renderer->m_buttonPressed[static_cast<unsigned int>(Input::sprint)] = false;
 	}
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
@@ -158,7 +164,7 @@ glm::vec2 Window::getCursorPos() const {
 	return {x, y};
 }
 
-std::tuple<std::array<bool, static_cast<size_t>(Input::count)>, glm::vec2> Window::getCursorInfo() const {
+std::tuple<std::array<bool, static_cast<size_t>(Input::count)>, glm::vec2> Window::getInputInfo() const {
 	return {m_buttonPressed, m_cursorPos};
 }
 

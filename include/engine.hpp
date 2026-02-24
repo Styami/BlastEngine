@@ -5,6 +5,7 @@
 #include "VkBootstrap.h"
 #include "camera.hpp"
 #include "descriptor.hpp"
+#include "materialObject.hpp"
 #include "texture.hpp"
 #include "window.hpp"
 #include "meshObject.hpp"
@@ -72,9 +73,9 @@ class Engine
 
 		void createSyncObjects();
 
-		void createVertexBuffer();
+		void createVertexBuffer(const std::vector<Vertex>& verticies);
 
-		void createIndexBuffer();
+		void createIndexBuffer(const std::vector<int>& indexes);
 
 		void createDescriptorPool();
 
@@ -86,7 +87,9 @@ class Engine
 
 		void loadObjects();
 
-		void loadTextures();
+		void createSSBO(const std::vector<MaterialObject>& materials);
+
+		void loadTextures(const std::vector<std::filesystem::path>& texturePath);
 
 		void createDepthMaps();
 
@@ -117,8 +120,10 @@ class Engine
 		std::vector<MeshObject> objects;
 		be::Buffer vbo;
 		size_t numVerticies = 0;
+		size_t numMaterials = 0;
 		be::Buffer ibo;
 		std::vector<be::Buffer> uniformBufferObjects;
+		be::Buffer ssbo;
 		std::vector<be::Texture> textures;
 		be::Descriptor descriptor;
 		vk::DescriptorPool descriptorPool;

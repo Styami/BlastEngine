@@ -16,7 +16,7 @@ namespace be {
             void clean();
             void createSetLayout(const std::vector<vk::DescriptorSetLayoutBinding>& descriptorSetLayoutBinding);
             void createPool(const std::vector<vk::DescriptorPoolSize>& createInfo, int numFrame);
-            void createSet(size_t numberFrame, const std::vector<be::Buffer>& buffers, const std::vector<be::Texture>& textures = {});
+            void createSet(size_t numberFrame, const std::vector<be::Buffer>& buffers, const be::Buffer& ssbo,const std::vector<be::Texture>& textures = {});
             const vk::DescriptorSetLayout& getLayout() const;
             size_t getLayoutSize() const;
             const std::vector<vk::DescriptorSet>& getSets() const;

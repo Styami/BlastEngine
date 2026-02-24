@@ -13,7 +13,6 @@ namespace be {
             void loadImage(const std::filesystem::path& name);
             void createTextureImage(
                 vk::ImageType type,
-                vk::Format format,
                 uint32_t mipLevel,
                 uint32_t arrayLayers,
                 vk::SampleCountFlagBits sampleCount,
@@ -24,6 +23,7 @@ namespace be {
             );
             void copyBufferToImage(vk::CommandPool commandPool);
             void transitionImageLayout(vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::CommandPool commandPool);
+            std::pair<vk::Format, std::vector<unsigned char>> pickFormat(const std::filesystem::path& path, unsigned char* pixels, size_t nbPixels, int nbChannels) const;
     		static void createTextureSampler();
             static void cleanSampler(); 
             vk::ImageView getImageView() const;
@@ -39,6 +39,7 @@ namespace be {
             int m_width;
             int m_texChannels;
             vk::Image m_image;
+            vk::Format m_format;
             vk::ImageView m_imageView;
             vk::DeviceMemory m_memory;
             be::Buffer m_buffer;

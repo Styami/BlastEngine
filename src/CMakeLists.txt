@@ -5,11 +5,12 @@ target_sources(BlastEngine PUBLIC
 	app.cpp
 	shaderCompiler.cpp
 	vertex.cpp
-	meshObject.cpp
+	#meshObject.cpp
 	utils.cpp
 	buffer.cpp
 	inputHandler.cpp
 	camera.cpp
 	descriptor.cpp
 	texture.cpp
+	objLoader.cpp
 )

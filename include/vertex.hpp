@@ -13,10 +13,11 @@ struct Vertex {
     glm::vec3 color;
     glm::vec3 normal;
     glm::vec2 texCoord;
+    int indexMat;
 
     bool operator==(const Vertex&) const = default;
     static vk::VertexInputBindingDescription getBindingDescription();
-    static std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescriptions();
+    static std::array<vk::VertexInputAttributeDescription, 5> getAttributeDescriptions();
 };
 
 template<>
@@ -25,7 +26,8 @@ struct std::hash<Vertex> {
         return (hash<glm::vec3>()(vertex.pos) ^
                 ((hash<glm::vec3>()(vertex.color) << 1) ^
                 ((hash<glm::vec3>()(vertex.normal) >> 1) ^
-                (hash<glm::vec2>()(vertex.texCoord) << 1) >> 1)));
+                (hash<glm::vec2>()(vertex.texCoord) << 1) >> 1))) ^
+                hash<int>()(vertex.indexMat);
     }
 };
 

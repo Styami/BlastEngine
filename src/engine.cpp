@@ -1,11 +1,16 @@
 #include "engine.hpp"
 #include "descriptor.hpp"
+#include "materialObject.hpp"
+#include "objLoader.hpp"
 #include "shaderCompiler.hpp"
 #include "texture.hpp"
 #include "utils.hpp"
+#include <cstddef>
 #include <filesystem>
 #include <ranges>
 #include <print>
+#include <vulkan/vulkan_enums.hpp>
+#include <vulkan/vulkan_structs.hpp>
 
 
 Engine::Engine(const Window& renderer, Camera& camera) :
@@ -55,6 +60,9 @@ void Engine::getPhysicalDevice() {
 													.setDynamicRendering(vk::True)
 													.setSynchronization2(vk::True);
 
+	vk::PhysicalDeviceVulkan12Features features12 = vk::PhysicalDeviceVulkan12Features()
+													.setRuntimeDescriptorArray(vk::True);
+
 	vk::PhysicalDeviceFeatures2 features2 = vk::PhysicalDeviceFeatures2()
 											.setFeatures(vk::PhysicalDeviceFeatures().setSamplerAnisotropy(vk::True));
 
@@ -62,9 +70,11 @@ void Engine::getPhysicalDevice() {
 	std::ranges::for_each(deviceExtensions, [&selector](const char* c) {
 		selector.add_required_extension(c);
 	});
-	auto selectedDevice = selector.set_required_features_13(features13)
-													.set_required_features(features2.features)
-													.select();
+	auto selectedDevice = selector
+												.set_required_features_12(features12)
+												.set_required_features_13(features13)
+												.set_required_features(features2.features)
+												.select();
 	if(!selectedDevice) {
 		throw std::runtime_error("Failed to find a physical device.");
 	}
@@ -305,34 +315,72 @@ void Engine::createDescriptorSetLayout() {
 		ubo = be::Buffer(vkDevice, sizeof(glm::mat4));
 		ubo.create(vk::BufferUsageFlagBits::eUniformBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
 		ubo.map();
-	
 	}
 	std::vector bindings = {
 		vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex),
-		vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment)
+		vk::DescriptorSetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, textures.size(), vk::ShaderStageFlagBits::eFragment),
+		vk::DescriptorSetLayoutBinding(2, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eFragment)
 	};
 
 	descriptor.createSetLayout(bindings);
 }
 
 void Engine::createDescriptorSets() {
-	descriptor.createSet(MAX_FRAME_IN_FLIGHT, uniformBufferObjects, textures);
+	descriptor.createSet(MAX_FRAME_IN_FLIGHT, uniformBufferObjects, ssbo, textures);
 }
 
 
 void Engine::loadObjects() {
-	objects.push_back(MeshObject(std::filesystem::current_path()/"data"/"viking_room.obj"));
+	ObjLoader info = ObjLoader(std::filesystem::current_path()/"data"/"sponza"/"sponza.obj");
+	createVertexBuffer(info.getVertices());
+	createIndexBuffer(info.getIndices());
+	createSSBO(info.getMaterials());
+	loadTextures(info.getTexturePath());
 }
 
-void Engine::loadTextures() {
+void Engine::createVertexBuffer(const std::vector<Vertex>& verticies) {
+	vk::DeviceSize vboSize = sizeof(Vertex) * verticies.size();
+	be::Buffer stagingBuffer = be::Buffer(vkDevice, vboSize);
+	stagingBuffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
+	stagingBuffer.map<Vertex>(verticies);
+
+	vbo = be::Buffer(vkDevice, vboSize);
+	vbo.create(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
+	vbo.copyBuffer(stagingBuffer, commandPool, graphicsQueue);
+}
+
+void Engine::createIndexBuffer(const std::vector<int>& indexes) {
+	vk::DeviceSize iboSize = sizeof(int) * indexes.size();
+	numVerticies = indexes.size();
+	be::Buffer stagingBuffer = be::Buffer(vkDevice, iboSize);
+	stagingBuffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
+	stagingBuffer.map<int>(indexes);
+
+	ibo = be::Buffer(vkDevice, iboSize);
+	ibo.create(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
+	ibo.copyBuffer(stagingBuffer, commandPool, graphicsQueue);
+}
+
+void Engine::createSSBO(const std::vector<MaterialObject>& materials) {
+	vk::DeviceSize ssboSize = sizeof(MaterialObject) * materials.size();
+	numMaterials = materials.size();
+	be::Buffer stagingBuffer = be::Buffer(vkDevice, ssboSize);
+	stagingBuffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
+	stagingBuffer.map<MaterialObject>(materials);
+
+	ssbo = be::Buffer(vkDevice, ssboSize);
+	ssbo.create(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
+	ssbo.copyBuffer(stagingBuffer, commandPool, graphicsQueue);
+}
+
+void Engine::loadTextures(const std::vector<std::filesystem::path>& texturePath) {
 	be::Texture::setDevice(vkDevice);
 	be::Texture::setPhysicalDevice(vkPhysicalDevice);
 	be::Texture::createTextureSampler();
-	std::filesystem::path imagePath = std::filesystem::current_path()/"data";
-	textures.push_back(be::Texture(imagePath / "viking_room.png", graphicsQueue));
-	for (be::Texture& texture : textures) {
+	std::filesystem::path imagePath = std::filesystem::current_path()/"data"/"sponza";
+	for (const std::filesystem::path& path : texturePath) {
+		be::Texture texture = be::Texture(imagePath / path, graphicsQueue);
 		texture.createTextureImage(vk::ImageType::e2D,
-							vk::Format::eR8G8B8A8Srgb,
 							1,
 							1,
 							vk::SampleCountFlagBits::e1,
@@ -344,6 +392,7 @@ void Engine::loadTextures() {
 		texture.transitionImageLayout(vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, commandPool);
 		texture.copyBufferToImage(commandPool);
 		texture.transitionImageLayout(vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, commandPool);
+		textures.push_back(texture);
 	}
 }
 
@@ -359,49 +408,11 @@ void Engine::createCommandPool() {
 void Engine::createDescriptorPool() {
 
 	std::vector poolSize = {
-		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, MAX_FRAME_IN_FLIGHT),
-		vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, MAX_FRAME_IN_FLIGHT)
+		vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, MAX_FRAME_IN_FLIGHT)
 	};
+	poolSize.push_back(vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, textures.size() * MAX_FRAME_IN_FLIGHT));
+	poolSize.push_back(vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, MAX_FRAME_IN_FLIGHT));
 	descriptor.createPool(poolSize, MAX_FRAME_IN_FLIGHT);
-}
-
-void Engine::createVertexBuffer() {
-	loadObjects(); // TODO : IT HAS TO BE CHANGE IN FUTURE!!!!!!!
-	std::vector<Vertex> verticesToRender;
-	for (MeshObject object : objects) {
-		std::ranges::for_each(object.getVertices(), [&verticesToRender](const Vertex& v) {
-			verticesToRender.push_back(v);
-		});
-	}
-	vk::DeviceSize vboSize = sizeof(Vertex) * verticesToRender.size();
-	//numVerticies = verticesToRender.size();
-	be::Buffer stagingBuffer = be::Buffer(vkDevice, vboSize);
-	stagingBuffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
-	stagingBuffer.map<Vertex>(verticesToRender);
-
-	vbo = be::Buffer(vkDevice, vboSize);
-	vbo.create(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
-	vbo.copyBuffer(stagingBuffer, commandPool, graphicsQueue);
-
-
-}
-
-void Engine::createIndexBuffer() {
-	std::vector<int> indicesOfVertices;
-	for (MeshObject object : objects) {
-		std::ranges::for_each(object.getIndices(), [&indicesOfVertices](const int i) {
-			indicesOfVertices.push_back(i);
-		});
-	}
-	vk::DeviceSize iboSize = sizeof(int) * indicesOfVertices.size();
-	numVerticies = indicesOfVertices.size();
-	be::Buffer stagingBuffer = be::Buffer(vkDevice, iboSize);
-	stagingBuffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, vkPhysicalDevice);
-	stagingBuffer.map<int>(indicesOfVertices);
-
-	ibo = be::Buffer(vkDevice, iboSize);
-	ibo.create(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::SharingMode::eExclusive, vkPhysicalDevice);
-	ibo.copyBuffer(stagingBuffer, commandPool, graphicsQueue);
 }
 
 void Engine::createCommandBuffers() {
@@ -580,7 +591,7 @@ void Engine::createSyncObjects() {
 }
 
 void Engine::updateUniformBuffer(uint32_t imageIndex) {
-	glm::mat4 vp = camera->getProj() * camera->getView();
+	glm::mat4 vp = camera->getProj() * camera->getView() * glm::scale(glm::mat4(1), glm::vec3(0.1));
 	uniformBufferObjects[imageIndex].update<glm::mat4>(&vp);
 }
 
@@ -662,13 +673,13 @@ void Engine::initVulkan() {
 	getQueueFamilies();
 	createSwapChain();
 	createImageViews();
+	createCommandPool();
+	loadObjects();
 	createDescriptorSetLayout();
 	createDepthMaps();
 	createGraphicPipeline();
-	createCommandPool();
-	createVertexBuffer();
-	createIndexBuffer();
-	loadTextures();
+	// createVertexBuffer();
+	// createIndexBuffer();
 	createDescriptorPool();
 	createDescriptorSets();
 	createCommandBuffers();
@@ -692,6 +703,7 @@ void Engine::cleanUp() {
 		ubo.clean();
 	for(be::Texture& texture : textures)
 		texture.clean();
+	ssbo.clean();
 	be::Texture::cleanSampler();
 	descriptor.clean();
 	vkDevice.destroyImage(depthMapImage);

@@ -1,5 +1,6 @@
 #include "texture.hpp"
 #include <format>
+#include <vector>
 #include "utils.hpp"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -20,20 +21,23 @@ void be::Texture::setPhysicalDevice(vk::PhysicalDevice physicalDevice) {
 
 void be::Texture::loadImage(const std::filesystem::path& name) {
     stbi_set_flip_vertically_on_load(true);
-    stbi_uc* pixels = stbi_load(name.c_str(), &m_width, &m_height, &m_texChannels, STBI_rgb_alpha);
+    int texChannels;
+    stbi_uc* pixels = stbi_load(name.c_str(), &m_width, &m_height, &texChannels, STBI_rgb_alpha);
     if (pixels == nullptr) {
         std::string errorMsg = std::format("Failed to load {} texture", name.c_str());
         throw std::runtime_error(errorMsg);
     }
 
+    auto [format, correctTextureData] = pickFormat(name, pixels, m_height * m_width, texChannels);
+    m_format = format;
+    texChannels = format == vk::Format::eR8G8B8A8Srgb ? 4:texChannels;
     m_buffer = be::Buffer(m_device, m_height * m_width * 4);
     m_buffer.create(vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive, m_physicalDevice);
-    m_buffer.map<stbi_uc>(std::vector<stbi_uc>(pixels, pixels + (m_width * m_height * 4)));
+    m_buffer.map<stbi_uc>(std::vector<stbi_uc>(pixels, pixels + m_height * m_width * 4));
     stbi_image_free(pixels);
 }
 
 void be::Texture::createTextureImage(vk::ImageType type,
-                                vk::Format format,
                                 uint32_t mipLevel,
                                 uint32_t arrayLayers,
                                 vk::SampleCountFlagBits sampleCount,
@@ -42,13 +46,12 @@ void be::Texture::createTextureImage(vk::ImageType type,
                                 vk::SharingMode sharingMode,
                                 vk::MemoryPropertyFlags properties
     ) {
-
     std::tie(m_memory, m_image) = createImage(
         m_device,
         m_physicalDevice,
         type,
-        format,
-        {static_cast<uint32_t>((m_width)), static_cast<uint32_t>(m_height), 1},
+        vk::Format::eR8G8B8A8Srgb,
+        {static_cast<uint32_t>(m_width), static_cast<uint32_t>(m_height), 1},
         mipLevel,
         arrayLayers,
         sampleCount,
@@ -61,7 +64,7 @@ void be::Texture::createTextureImage(vk::ImageType type,
         m_device,
         m_image,
         vk::ImageViewType::e2D,
-        format,
+        vk::Format::eR8G8B8A8Srgb,
         vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1)
     );
 }
@@ -125,6 +128,62 @@ void be::Texture::createTextureSampler() {
         vk::CompareOp::eAlways
     );
     sampler = m_device.createSampler(samplerInfo);
+}
+
+std::pair<vk::Format, std::vector<unsigned char>> be::Texture::pickFormat(const std::filesystem::path& path, unsigned char* pixels, size_t nbPixels, int nbChannels) const {
+    vk::Format resFormat = vk::Format::eR8G8B8A8Srgb;
+    if (path.extension().string().compare(".jpeg") == 0) {
+        switch (nbChannels) {
+            case 1: 
+                resFormat = vk::Format::eR8Unorm;
+            break;
+            case 3:
+                resFormat = vk::Format::eR8G8B8A8Srgb;
+            break;        
+            default:
+                // resFormat = vk::Format::eR8G8B8A8Srgb;
+            break;
+        }
+    } else if (path.extension().string().compare(".png") == 0) {
+        switch (nbChannels) {
+            case 1: 
+                resFormat = vk::Format::eR8Unorm;
+            break;
+            case 3:
+                resFormat = vk::Format::eR8G8B8A8Srgb;
+            break;
+            case 4:
+                resFormat = vk::Format::eR8G8B8A8Srgb;
+            break;     
+            default:
+                // resFormat = vk::Format::eR8G8B8A8Srgb;     
+            break;
+        }
+    } else if (path.extension().string().compare(".bmp") == 0) {
+        switch (nbChannels) {
+            case 3:
+                resFormat = vk::Format::eR8G8B8A8Srgb;
+            break;        
+            default:
+                // resFormat = vk::Format::eR8G8B8Srgb;
+            break;
+        }
+    }
+
+    std::vector<unsigned char> finalTextures;
+    if (nbChannels == 3) {
+        finalTextures.push_back(pixels[0]);
+        for(size_t i = 1; i < nbPixels * nbChannels; i++) {
+            if (i%3 == 0) {
+                finalTextures.push_back(255);
+            }
+            finalTextures.push_back(pixels[i]);
+        }
+    } else {
+        finalTextures = std::vector<unsigned char>(pixels, pixels + nbPixels * nbChannels);
+    }
+
+    return {resFormat, finalTextures};
 }
 
 vk::ImageView be::Texture::getImageView() const {

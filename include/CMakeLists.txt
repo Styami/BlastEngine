@@ -11,4 +11,6 @@ target_sources(BlastEngine PUBLIC
 	camera.hpp
 	descriptor.hpp
 	texture.hpp
+	materialObject.hpp
+	objLoader.hpp
 )

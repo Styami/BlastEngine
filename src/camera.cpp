@@ -9,8 +9,8 @@ Camera::Camera() :
     m_forward(0, 0, 1),
     m_aspect(16.f/9),
     m_fov(glm::radians(90.f)),
-    radianPerMillisec(glm::radians(0.1)),
-    distPerMillisec(0.05)
+    m_radianPerMillisec(glm::radians(0.1)),
+    m_distPerMillisec(0.05)
 {}
 
 Camera::Camera(float aspect, float fov, const glm::vec3& position) :
@@ -21,8 +21,8 @@ Camera::Camera(float aspect, float fov, const glm::vec3& position) :
     m_forward(0, 0, 1),
     m_aspect(aspect),
     m_fov(fov),
-    radianPerMillisec(glm::radians(0.0001)),
-    distPerMillisec(0.000005)
+    m_radianPerMillisec(glm::radians(0.0001)),
+    m_distPerMillisec(0.000005)
 {}
 
 Camera::Camera(const Camera& another) :
@@ -33,8 +33,8 @@ Camera::Camera(const Camera& another) :
     m_forward(another.m_forward),
     m_aspect(another.m_aspect),
     m_fov(another.m_fov),
-    radianPerMillisec(another.radianPerMillisec),
-    distPerMillisec(another.distPerMillisec)
+    m_radianPerMillisec(another.m_radianPerMillisec),
+    m_distPerMillisec(another.m_distPerMillisec)
 {}
 
 Camera& Camera::operator=(const Camera& another) {
@@ -45,40 +45,52 @@ Camera& Camera::operator=(const Camera& another) {
     m_side = another.m_side;
     m_aspect = another.m_aspect;
     m_fov = another.m_fov;
-    radianPerMillisec = another.radianPerMillisec;
-    distPerMillisec = another.distPerMillisec;
+    m_radianPerMillisec = another.m_radianPerMillisec;
+    m_distPerMillisec = another.m_distPerMillisec;
 
     return *this;
 }
 
 void Camera::forward(double deltaTime) {
-    float dist = distPerMillisec * deltaTime;
+    float dist = m_distPerMillisec * deltaTime;
     m_position -= m_forward * dist;
 }
 
 void Camera::left(double deltaTime) {
-    float dist = distPerMillisec * deltaTime;
+    float dist = m_distPerMillisec * deltaTime;
     m_position -= m_side * dist;
 }
 
 void Camera::right(double deltaTime) {
-    float dist = distPerMillisec * deltaTime;
+    float dist = m_distPerMillisec * deltaTime;
     m_position += m_side * dist;
 }
 
 void Camera::backward(double deltaTime) {
-    float dist = distPerMillisec * deltaTime;
+    float dist = m_distPerMillisec * deltaTime;
     m_position += m_forward * dist;
 }
 
 void Camera::upward(double deltaTime) {
-    float dist = distPerMillisec * deltaTime;
+    float dist = m_distPerMillisec * deltaTime;
     m_position += m_up * dist;
 }
 
 void Camera::downward(double deltaTime) {
-    float dist = distPerMillisec * deltaTime;
+    float dist = m_distPerMillisec * deltaTime;
     m_position -= m_up * dist;
+}
+
+void Camera::setSprint(bool isSprinting) {
+    m_sprint = isSprinting;
+}
+
+void Camera::accelerate(float factor) {
+    m_distPerMillisec *= factor;
+}
+
+bool Camera::isSprinting() const {
+    return m_sprint;
 }
 
 void Camera::horizontallyRotate(float angle) {
@@ -95,8 +107,8 @@ void Camera::verticallyRotate(float angle) {
 
 
 void Camera::rotate(const glm::vec2& translate, double deltaTime) {
-    float anglex = translate.x * radianPerMillisec * deltaTime * 3;
-    float angley = translate.y * radianPerMillisec * deltaTime * 3;
+    float anglex = translate.x * m_radianPerMillisec * deltaTime * 3;
+    float angley = translate.y * m_radianPerMillisec * deltaTime * 3;
     verticallyRotate(angley);
     horizontallyRotate(anglex);
     m_side = glm::normalize(glm::cross(glm::vec3(0, 1, 0), m_forward));
@@ -121,7 +133,7 @@ glm::mat4 Camera::getView() const {
 }
 
 glm::mat4 Camera::getProj() const {
-    glm::mat4 perspective = glm::perspective(m_fov, m_aspect, 0.1f, 10.f);
+    glm::mat4 perspective = glm::perspective(m_fov, m_aspect, 0.1f, 200.f);
     perspective[1][1] *= -1;
     return perspective;
 }

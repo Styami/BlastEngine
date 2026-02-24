@@ -53,7 +53,7 @@ MeshObject::MeshObject(const std::filesystem::path& filename) :
                 texCoord.x = attrib.texcoords[2 * vertexIndex.texcoord_index];
                 texCoord.y = attrib.texcoords[2 * vertexIndex.texcoord_index + 1];
                 
-                Vertex vertex{position, {1, 1, 1}, normal, texCoord};
+                Vertex vertex{position, {1, 1, 1}, normal, texCoord, -1};
 
                 if(verticies_map.count(vertex) == 0) {
                     verticies_map[vertex] = verticies_map.size();

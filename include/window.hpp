@@ -34,7 +34,7 @@ class Window {
 		void waitEvents();
 		GLFWwindow* getWindow() const;
 		glm::vec2 getCursorPos() const;
-		std::tuple<std::array<bool, static_cast<size_t>(Input::count)>, glm::vec2> getCursorInfo() const;
+		std::tuple<std::array<bool, static_cast<size_t>(Input::count)>, glm::vec2> getInputInfo() const;
 		
 	private:
 		static void frameBufferResizeCallback(GLFWwindow* window, int width, int height);

@@ -1,5 +1,6 @@
 #include "descriptor.hpp"
 #include "texture.hpp"
+#include <vulkan/vulkan_structs.hpp>
 
 be::Descriptor::Descriptor() :
     m_device(nullptr)
@@ -43,7 +44,7 @@ void be::Descriptor::createPool(const std::vector<vk::DescriptorPoolSize>& creat
 	m_descriptorPool = m_device.createDescriptorPool(descriptorPoolCreateInfo);
 }
 
-void be::Descriptor::createSet(size_t numberFrame, const std::vector<be::Buffer>& buffers, const std::vector<be::Texture>& textures) {
+void be::Descriptor::createSet(size_t numberFrame, const std::vector<be::Buffer>& buffers, const be::Buffer& ssbo, const std::vector<be::Texture>& textures) {
     std::vector layouts = std::vector<vk::DescriptorSetLayout>(numberFrame, m_descriptorSetLayout);
     vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo(
 		m_descriptorPool,
@@ -52,14 +53,19 @@ void be::Descriptor::createSet(size_t numberFrame, const std::vector<be::Buffer>
 	);
     m_descriptorSets = m_device.allocateDescriptorSets(allocInfo);
     std::vector<vk::WriteDescriptorSet> writeDescriptorSets;
-
+    std::vector<std::vector<vk::DescriptorImageInfo>> imagesInfo;
+    imagesInfo.resize(numberFrame);
+    std::vector<std::vector<vk::DescriptorBufferInfo>> buffersInfo;
+    buffersInfo.resize(numberFrame);
+    std::vector<std::vector<vk::DescriptorBufferInfo>> ssbosInfo;
+    ssbosInfo.resize(numberFrame);
     for (size_t i = 0; i < numberFrame; i++) {
-        vk::DescriptorBufferInfo bufferInfo = vk::DescriptorBufferInfo(
+        vk::DescriptorBufferInfo uboInfo = vk::DescriptorBufferInfo(
             buffers[i].getBuffer(),
             0,
             buffers[i].getSize()
         );
-
+        buffersInfo[i].push_back(uboInfo);
         vk::WriteDescriptorSet writeDescriptorSet = vk::WriteDescriptorSet(
             m_descriptorSets[i],
             0,
@@ -67,7 +73,24 @@ void be::Descriptor::createSet(size_t numberFrame, const std::vector<be::Buffer>
             1,
             vk::DescriptorType::eUniformBuffer,
             {},
-            &bufferInfo
+            buffersInfo[i].data()
+        );
+        writeDescriptorSets.push_back(writeDescriptorSet);
+        
+        vk::DescriptorBufferInfo ssboInfo = vk::DescriptorBufferInfo(
+            ssbo.getBuffer(),
+            0,
+            ssbo.getSize()
+        );
+        ssbosInfo[i].push_back(ssboInfo);
+        writeDescriptorSet = vk::WriteDescriptorSet(
+            m_descriptorSets[i],
+            2,
+            0,
+            1,
+            vk::DescriptorType::eStorageBuffer,
+            {},
+            ssbosInfo[i].data()
         );
         writeDescriptorSets.push_back(writeDescriptorSet);
 
@@ -78,17 +101,17 @@ void be::Descriptor::createSet(size_t numberFrame, const std::vector<be::Buffer>
             texture.getImageView(),
             vk::ImageLayout::eShaderReadOnlyOptimal
             );
-
-            writeDescriptorSet = vk::WriteDescriptorSet(
-                m_descriptorSets[i],
-                1,
-                0,
-                1,
-                vk::DescriptorType::eCombinedImageSampler,
-                &imageInfo
-            );
-            writeDescriptorSets.push_back(writeDescriptorSet);
+            imagesInfo[i].push_back(imageInfo);
         }
+        writeDescriptorSet = vk::WriteDescriptorSet(
+            m_descriptorSets[i],
+            1,
+            0,
+            imagesInfo[i].size(),
+            vk::DescriptorType::eCombinedImageSampler,
+            imagesInfo[i].data()
+        );
+        writeDescriptorSets.push_back(writeDescriptorSet);
     }
     m_device.updateDescriptorSets(writeDescriptorSets, {});
 }

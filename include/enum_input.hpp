@@ -13,6 +13,7 @@ enum class Input {
     leftClick,
     rightClick,
 	escape,
+	sprint,
 	count
 };
 

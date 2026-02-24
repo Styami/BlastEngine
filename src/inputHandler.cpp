@@ -9,7 +9,14 @@ InputHandler::InputHandler() :
 
 void InputHandler::event(const Window& renderer, Camera& camera, const double dt) {
     
-    auto [buttonsPressed, newPos] = renderer.getCursorInfo();
+    auto [buttonsPressed, newPos] = renderer.getInputInfo();
+    if (buttonsPressed[static_cast<unsigned int>(Input::sprint)] && !camera.isSprinting()) {
+        camera.setSprint(true);
+        camera.accelerate(2);
+    } else if (!buttonsPressed[static_cast<unsigned int>(Input::sprint)] && camera.isSprinting()) {
+        camera.setSprint(false);
+        camera.accelerate(0.5);
+    }
     if (buttonsPressed[static_cast<unsigned int>(Input::backward)]) {
         camera.backward(dt);
     }
@@ -32,15 +39,11 @@ void InputHandler::event(const Window& renderer, Camera& camera, const double dt
         camera.backward(dt);
     }
     if (buttonsPressed[static_cast<unsigned int>(Input::leftClick)] && leftClickPressed) {
-        // glm::vec2 newPos = renderer.getCursorPos();
         glm::vec2 rotateVec = newPos - m_cursorPos;
-        // if (rotateVec.x != 0 || rotateVec.y != 0)
-            // rotateVec = glm::normalize(rotateVec);
         camera.rotate(rotateVec, dt);
         m_cursorPos = newPos;
-        //leftClickPressed = false;
     }
-    if (buttonsPressed[static_cast<unsigned int>(Input::leftClick)]&& !leftClickPressed) {
+    if (buttonsPressed[static_cast<unsigned int>(Input::leftClick)] && !leftClickPressed) {
         m_cursorPos = newPos;
         leftClickPressed = true;
     }
